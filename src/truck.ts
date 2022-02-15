@@ -1,6 +1,0 @@
-class Truck {
-
-
-}
-
-export { Truck }
