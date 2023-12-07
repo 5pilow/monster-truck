@@ -10,30 +10,30 @@ class Wheel {
 	private TRANSFORM_AUX ;
 	// private wire
 
-	constructor(carBody: Ammo.btRigidBody, model: THREE.Group, x: number, dx: number, y: number, z: number, dz: number) {
+	constructor(ammo: typeof Ammo, carBody: Ammo.btRigidBody, model: THREE.Group, x: number, dx: number, y: number, z: number, dz: number) {
 
-		this.TRANSFORM_AUX = new Ammo.btTransform()
+		this.TRANSFORM_AUX = new ammo.btTransform()
 
 		var DISABLE_DEACTIVATION = 4;
 		var wheelRadius = 0.85
 		var wheelWidth = 1.2;
 		// var wheelRadius = 0.6;
 		// var wheelWidth = 0.6;
-		var massWheel = 400
+		var massWheel = 500
 		var erp = 1
 
-		var geometry = new Ammo.btCylinderShape(new Ammo.btVector3(wheelRadius, wheelWidth / 2, wheelRadius));
+		var geometry = new ammo.btCylinderShape(new ammo.btVector3(wheelRadius, wheelWidth / 2, wheelRadius));
 		// var geometry = new Ammo.btSphereShape(wheelRadius);
 		// var geometry = new Ammo.btCapsuleShapeX(wheelRadius, wheelWidth);
-		var transformW = new Ammo.btTransform();
+		var transformW = new ammo.btTransform();
 		transformW.setIdentity();
-		transformW.setOrigin(new Ammo.btVector3(x + dx, y, z + dz));
-		var wheelRot = new Ammo.btQuaternion(0, 0, Math.PI / 2, Math.PI / 2)
+		transformW.setOrigin(new ammo.btVector3(x + dx, y, z + dz));
+		var wheelRot = new ammo.btQuaternion(0, 0, Math.PI / 2, Math.PI / 2)
 		transformW.setRotation(wheelRot);
-		var motionStateW = new Ammo.btDefaultMotionState(transformW);
-		var localInertiaW = new Ammo.btVector3(0, 0, 0);
+		var motionStateW = new ammo.btDefaultMotionState(transformW);
+		var localInertiaW = new ammo.btVector3(0, 0, 0);
 		geometry.calculateLocalInertia(massWheel, localInertiaW);
-		this.body = new Ammo.btRigidBody(new Ammo.btRigidBodyConstructionInfo(massWheel, motionStateW, geometry, localInertiaW));
+		this.body = new ammo.btRigidBody(new ammo.btRigidBodyConstructionInfo(massWheel, motionStateW, geometry, localInertiaW));
 		this.body.setActivationState(DISABLE_DEACTIVATION);
 		this.body.setFriction(500);
 		this.body.setDamping(0.5, 0.8)
@@ -48,25 +48,26 @@ class Wheel {
 		}
 
 		// Constraint Chassis <--> Wheel
-		var frameA = new Ammo.btTransform();
+		const height = 1.65
+		var frameA = new ammo.btTransform();
 		frameA.setIdentity();
-		frameA.setOrigin(new Ammo.btVector3(dx * 0.5, -1.3, dz));
+		frameA.setOrigin(new ammo.btVector3(dx * 0.5, -height, dz));
 		// frameA.setRotation(new Ammo.btQuaternion(0, 0, -Math.PI / 2, -Math.PI / 2))
-		var frameB = new Ammo.btTransform();
+		var frameB = new ammo.btTransform();
 		frameB.setIdentity();
-		frameB.setOrigin(new Ammo.btVector3(0, Math.sign(dx) * 0.5, 0));
-		frameB.setRotation(new Ammo.btQuaternion(0, 0, -Math.PI / 2 , Math.PI / 2))
+		frameB.setOrigin(new ammo.btVector3(0, Math.sign(dx) * 0.5, 0));
+		frameB.setRotation(new ammo.btQuaternion(0, 0, -Math.PI / 2 , Math.PI / 2))
 
-		this.constraint = new Ammo.btGeneric6DofSpringConstraint(carBody, this.body, frameA, frameB, false)
+		this.constraint = new ammo.btGeneric6DofSpringConstraint(carBody, this.body, frameA, frameB, false)
 		// console.log("constraint", this.constraint)
 		// var constraint = new Ammo.btGeneric6DofConstraint(this.spindleBody, this.body, frameA, frameB, true)
 		// var constraint = new Ammo.btSliderConstraint(this.spindleBody, this.body, frameA, frameB, false)
 		// constraint.setLowerLinLimit(0)
 		// constraint.setUpperLinLimit(0)
-		this.constraint.setLinearLowerLimit(new Ammo.btVector3( 0 , 0, 0));
-		this.constraint.setLinearUpperLimit(new Ammo.btVector3( 0, 0.6,  0));
-		this.constraint.setAngularLowerLimit(new Ammo.btVector3( -Math.PI, 0, 0));
-		this.constraint.setAngularUpperLimit(new Ammo.btVector3( Math.PI, 0, 0));
+		this.constraint.setLinearLowerLimit(new ammo.btVector3( 0 , 0.0, 0));
+		this.constraint.setLinearUpperLimit(new ammo.btVector3( 0, 0.6,  0));
+		this.constraint.setAngularLowerLimit(new ammo.btVector3( -Math.PI, 0, 0));
+		this.constraint.setAngularUpperLimit(new ammo.btVector3( Math.PI, 0, 0));
 		this.constraint.enableSpring(1, true)
 		this.constraint.setStiffness(1, 30000)
 		this.constraint.setDamping(1, 0.75)

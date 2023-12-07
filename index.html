@@ -1,26 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>Desert Stunts II</title>
-	<link rel="alternate icon" class="js-site-favicon" type="image/png" href="/public/favicon.png">
+	<title>Monster Truck</title>
+	<link rel="alternate icon" class="js-site-favicon" type="image/png" href="favicon.png">
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 	<style>
 		body {
-			font-family: Monospace;
+			font-family: sans-serif;
 			text-align: center;
+			font-weight: bold;
 
-			background-color: #309ef8;
+			background-color: #eee;
 			margin: 0px;
 			overflow: hidden;
 		}
+		#container {
+			display: flex;
+			flex-direction: column;
+			gap: 50px;
+			width: 100%;
+			height: 100vh;
+			align-items: center;
+			justify-content: center;
+		}
 
+		#hud {
+			display: none;
+		}
 		#speedometer {
 			color: #ffffff;
-			background-color: #990000;
 			position: absolute;
-			bottom: 0px;
-			padding: 5px;
+			bottom: 40px;
+			left: 40px;
+			font-size: 40px;
+		}
+		#settings {
+			color: #ffffff;
+			position: absolute;
+			bottom: 40px;
+			right: 40px;
+		}
+		#colors div {
+			display: inline-block;
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			border: 2px solid white;
+			margin: 5px;
+			cursor: pointer;
+		}
+		.option {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin: 10px 0;
+			justify-content: space-between;
 		}
 
 		#info {
@@ -36,8 +71,39 @@
 </head>
 
 <body>
-	<div id="container"><br /><br /><br /><br /><br />Loading...</div>
-	<div id="speedometer">0.0 km/h</div>
+	<div id="container">
+		<img src="/monster-truck.png" width="300">
+		Loading...
+	</div>
+
+	<div id="hud">
+		<div id="speedometer">0.0 km/h</div>
+
+		<div id="settings">
+			<div>Contrôles : ZQSD, Souris, Espace</div>
+			<div class="option">
+				<span>Suspension</span> <input type="range" id="suspension" name="suspension" min="0" max="5" onmousemove="changeSuspension(event)" />
+			</div>
+			<!-- <div class="option">
+				<span>Hauteur</span> <input type="range" id="height" name="height" min="0" max="5" onmousemove="changeHeight(event)" />
+			</div> -->
+			<div class="option">
+				<span>Métallique</span> <input type="range" id="metallic" name="height" min="0" max="5" value="2" onmousemove="changeMetallic(event)" />
+			</div>
+			<div id="colors">
+				<div style="background: #ff0000" onclick="setColor(0xff0000)"></div>
+				<div style="background: #00aa00" onclick="setColor(0x00ff00)"></div>
+				<div style="background: #00eaff" onclick="setColor(0x00eaff)"></div>
+				<div style="background: #ffcc00" onclick="setColor(0xffff00)"></div>
+				<br>
+				<div style="background: #ff7700" onclick="setColor(0xff7700)"></div>
+				<div style="background: #ff00f2" onclick="setColor(0xff00f2)"></div>
+				<div style="background: #000" onclick="setColor(0x000000)"></div>
+				<div style="background: #ffffff" onclick="setColor(0xffffff)"></div>
+			</div>
+		</div>
+	</div>
+
 	<div id="app"></div>
 	<script type="module" src="/src/main.ts"></script>
 </body>

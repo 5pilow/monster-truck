@@ -8,30 +8,32 @@ class Box extends Entity {
 
 	public body: Ammo.btRigidBody
 	public mesh: THREE.Group
-	private TRANSFORM_AUX = new Ammo.btTransform();
+	private TRANSFORM_AUX: Ammo.btTransform
 
-	public constructor(w: number, l: number, h: number, pos: THREE.Vector3) {
+	public constructor(ammo: typeof Ammo, w: number, l: number, h: number, pos: THREE.Vector3) {
 		super()
 
-		const mass = 10
+		this.TRANSFORM_AUX = new ammo.btTransform();
+
+		const mass = 75
 		const friction = 10
-		var geometry = new Ammo.btBoxShape(new Ammo.btVector3(w * 0.5, l * 0.5, h * 0.5));
+		var geometry = new ammo.btBoxShape(new ammo.btVector3(w * 0.5, l * 0.5, h * 0.5));
 
 		this.mesh = Model.CRATE.clone()
 		this.mesh.position.copy(pos);
 		// mesh.quaternion.copy(quat);
 
-		var transform = new Ammo.btTransform();
+		var transform = new ammo.btTransform();
 		transform.setIdentity();
-		transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
+		transform.setOrigin(new ammo.btVector3(pos.x, pos.y, pos.z));
 		// transform.setRotation(new Ammo.btQuaternion(quat.x, quat.y, quat.z, quat.w));
-		var motionState = new Ammo.btDefaultMotionState(transform);
+		var motionState = new ammo.btDefaultMotionState(transform);
 
-		var localInertia = new Ammo.btVector3(0, 0, 0);
+		var localInertia = new ammo.btVector3(0, 0, 0);
 		geometry.calculateLocalInertia(mass, localInertia);
 
-		var rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, motionState, geometry, localInertia);
-		this.body = new Ammo.btRigidBody(rbInfo);
+		var rbInfo = new ammo.btRigidBodyConstructionInfo(mass, motionState, geometry, localInertia);
+		this.body = new ammo.btRigidBody(rbInfo);
 
 		this.body.setFriction(friction);
 		//body.setRestitution(.9);
@@ -41,6 +43,11 @@ class Box extends Entity {
 	public add(game: Game) {
 		game.world.addRigidBody(this.body)
 		game.scene.add(this.mesh)
+	}
+
+	public remove(game: Game) {
+		game.world.removeRigidBody(this.body)
+		game.scene.remove(this.mesh)
 	}
 
 	public update() {
