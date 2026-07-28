@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Modèles lourds qui ne sont pas servis : exports non utilisés par le jeu et
+# originaux non compressés des modèles de public/model. Plusieurs centaines de Mo,
+# gardés en local uniquement.
+assets-src/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
