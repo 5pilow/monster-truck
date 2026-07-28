@@ -1,46 +1,179 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-	<title>Monster Truck</title>
-	<link rel="alternate icon" class="js-site-favicon" type="image/png" href="favicon.png">
+	<title>Monster Truck, mini-jeu 3D dans le navigateur</title>
 	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+	<meta name="description" content="Conduisez un monster truck sur un terrain vallonné, directement dans votre navigateur. Physique Bullet, suspensions réglables, carrosserie personnalisable. Gratuit, sans installation.">
+	<meta name="theme-color" content="#7fb2d9">
+	<link rel="canonical" href="https://monster-truck.pilow.fr/">
+	<link rel="alternate icon" class="js-site-favicon" type="image/png" href="favicon.png">
+
+	<meta property="og:type" content="website">
+	<meta property="og:site_name" content="Monster Truck">
+	<meta property="og:title" content="Monster Truck, mini-jeu 3D dans le navigateur">
+	<meta property="og:description" content="Conduisez un monster truck sur un terrain vallonné, directement dans votre navigateur. Physique Bullet, suspensions réglables, carrosserie personnalisable.">
+	<meta property="og:url" content="https://monster-truck.pilow.fr/">
+	<meta property="og:image" content="https://monster-truck.pilow.fr/monster-truck.png">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:title" content="Monster Truck, mini-jeu 3D dans le navigateur">
+	<meta name="twitter:description" content="Conduisez un monster truck sur un terrain vallonné, directement dans votre navigateur.">
+	<meta name="twitter:image" content="https://monster-truck.pilow.fr/monster-truck.png">
+
+	<!-- Publicité : AdSense est validé au niveau du domaine racine pilow.fr, qui
+	     couvre ce sous-domaine. Les encarts sont posés depuis src/ads.ts. -->
+	<meta name="google-adsense-account" content="ca-pub-1293426764542886">
+	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1293426764542886" crossorigin="anonymous"></script>
+
 	<style>
+		:root {
+			--accent: #ff5a1f;
+			--panel: rgba(16, 22, 30, 0.88);
+		}
+		* { box-sizing: border-box; }
 		body {
-			font-family: sans-serif;
+			font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 			text-align: center;
 			font-weight: bold;
-
 			background-color: #eee;
 			margin: 0px;
 			overflow: hidden;
 		}
-		#container {
-			display: flex;
-			flex-direction: column;
-			gap: 50px;
-			width: 100%;
-			height: 100vh;
-			align-items: center;
-			justify-content: center;
-		}
 
-		#hud {
-			display: none;
+		/* Le canvas est en position fixe : quand il était enfant du conteneur en
+		   flex-column, la hauteur du canvas s'ajoutait à celle des autres enfants et
+		   le rendu se retrouvait décalé verticalement hors de l'écran. */
+		#container { position: fixed; inset: 0; }
+		#container canvas { display: block; }
+
+		#loader {
+			position: fixed; inset: 0;
+			display: flex; flex-direction: column;
+			align-items: center; justify-content: center; gap: 30px;
+			color: #445; font-size: 18px;
 		}
+		#loader img { width: 300px; max-width: 70vw; height: auto; }
+
+		/* ---------- Écrans (accueil, pause) ---------- */
+
+		.screen {
+			position: fixed; inset: 0;
+			display: none;
+			align-items: flex-start; justify-content: center;
+			padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+			overflow-y: auto;
+			background: radial-gradient(circle at 50% 30%, rgba(10, 16, 24, .72), rgba(6, 10, 16, .93));
+			z-index: 20;
+			backdrop-filter: blur(3px);
+		}
+		.panel {
+			width: 100%; max-width: 620px;
+			margin: auto;
+			background: var(--panel);
+			border: 1px solid rgba(255, 255, 255, .12);
+			border-radius: 18px;
+			padding: 28px 26px 22px;
+			color: #e8edf4;
+			box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+			text-align: left;
+		}
+		.panel h1 {
+			margin: 0 0 2px;
+			font-size: clamp(28px, 7vw, 42px);
+			letter-spacing: -0.5px;
+			text-align: center;
+			text-transform: uppercase;
+		}
+		.panel h2 {
+			font-size: 15px; text-transform: uppercase; letter-spacing: 1.2px;
+			color: #8fa3bb; margin: 26px 0 8px;
+		}
+		.panel p { font-weight: normal; line-height: 1.6; margin: 10px 0; color: #cfd8e4; }
+		.panel ul { font-weight: normal; line-height: 1.6; margin: 8px 0; padding-left: 22px; color: #cfd8e4; }
+		.panel li { margin: 4px 0; }
+		.panel a { color: #7ab8ff; }
+		.tagline { text-align: center; color: #9fb0c4 !important; margin-top: 6px !important; }
+		.panel img.hero { display: block; width: 260px; max-width: 80%; height: auto; margin: 6px auto 0; }
+
+		.play {
+			display: block; width: 100%;
+			margin: 22px 0 6px;
+			padding: 16px 24px;
+			font: inherit; font-size: 21px; font-weight: bold;
+			text-transform: uppercase; letter-spacing: 1px;
+			color: #fff; background: var(--accent);
+			border: 0; border-radius: 12px; cursor: pointer;
+			box-shadow: 0 8px 22px rgba(255, 90, 31, .35);
+		}
+		.play:hover { background: #ff6f3c; }
+		.play:active { transform: translateY(1px); }
+		.play.secondary {
+			margin-top: 10px;
+			font-size: 16px;
+			padding: 12px 20px;
+			background: transparent;
+			color: #cfd8e4;
+			border: 1px solid rgba(255, 255, 255, .25);
+			box-shadow: none;
+		}
+		.play.secondary:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+
+		.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-weight: normal; color: #cfd8e4; }
+		kbd {
+			font-family: inherit; font-size: 13px; font-weight: bold;
+			background: #2b3644; border: 1px solid #46556a; border-bottom-width: 2px;
+			border-radius: 5px; padding: 2px 8px; white-space: nowrap;
+		}
+		.foot {
+			margin-top: 24px; padding-top: 14px;
+			border-top: 1px solid rgba(255, 255, 255, .1);
+			font-size: 13px; font-weight: normal; color: #8595a8;
+			display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center;
+		}
+		.foot a { color: #8595a8; }
+
+		/* Conteneur d'encart : replié tout seul par src/ads.ts si aucune annonce
+		   n'est renvoyée, pour ne pas laisser un trou dans la mise en page. */
+		.ad { margin: 18px 0 0; min-height: 0; text-align: center; }
+		.ad-label { font-size: 11px; font-weight: normal; color: #6b7a8d; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+
+		/* ---------- Jeu ---------- */
+
+		#hud { display: none; }
 		#speedometer {
 			color: #ffffff;
 			position: absolute;
-			bottom: 40px;
+			bottom: max(40px, env(safe-area-inset-bottom));
 			left: 40px;
 			font-size: 40px;
+			text-shadow: 0 2px 12px rgba(0, 0, 0, .5);
+			pointer-events: none;
 		}
 		#settings {
 			color: #ffffff;
 			position: absolute;
-			bottom: 40px;
+			bottom: max(40px, env(safe-area-inset-bottom));
 			right: 40px;
+			text-shadow: 0 1px 8px rgba(0, 0, 0, .5);
 		}
+		#hud-buttons {
+			position: absolute;
+			top: max(10px, env(safe-area-inset-top));
+			right: max(10px, env(safe-area-inset-right));
+			display: flex; gap: 8px;
+		}
+		#hud-buttons button {
+			-webkit-tap-highlight-color: transparent;
+			width: 44px; height: 44px; border-radius: 50%;
+			border: 2px solid rgba(255, 255, 255, .5);
+			background: rgba(20, 28, 38, .45);
+			color: #fff; font: inherit; font-size: 20px; cursor: pointer;
+			display: flex; align-items: center; justify-content: center;
+		}
+		#hud-buttons button:hover { background: rgba(20, 28, 38, .75); }
+		/* Les réglages sont déjà affichés en permanence sur grand écran, le bouton n'y
+		   sert à rien. Sélecteur doublé pour passer devant « #hud-buttons button ». */
+		#hud-buttons #settings-toggle { display: none; }
 		#colors div {
 			display: inline-block;
 			width: 40px;
@@ -57,38 +190,151 @@
 			margin: 10px 0;
 			justify-content: space-between;
 		}
-
-		#info {
-			position: absolute;
-			top: 0px;
-			width: 100%;
-			padding: 5px;
+		/* Fond discret : en texte blanc simple, l'indice devenait illisible dès que le
+		   ciel clair passait derrière. */
+		#pause-hint {
+			position: absolute; top: 16px; left: 18px;
+			font-size: 13px; font-weight: normal; color: #fff;
+			background: rgba(16, 22, 30, .45);
+			padding: 5px 11px; border-radius: 999px;
+			pointer-events: none;
 		}
-		a {
-			color: #a06851;
+
+		/* ---------- Contrôles tactiles ---------- */
+
+		#touch {
+			display: none;
+			position: absolute; inset: auto 0 0 0;
+			padding: 0 max(14px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-right));
+			justify-content: space-between; align-items: flex-end;
+			pointer-events: none;
+		}
+		#touch .cluster { display: flex; gap: 10px; align-items: flex-end; pointer-events: auto; }
+		/* Le pavé de droite est en colonne (saut au-dessus des pédales) : sur un écran
+		   de 390 px, les cinq boutons alignés débordaient hors de l'écran. */
+		#touch .cluster.stack { flex-direction: column; align-items: flex-end; }
+		#touch .cluster.stack .row { display: flex; gap: 10px; align-items: flex-end; }
+		#touch button {
+			-webkit-tap-highlight-color: transparent;
+			touch-action: none;
+			width: 68px; height: 68px;
+			border-radius: 50%;
+			border: 2px solid rgba(255, 255, 255, .5);
+			background: rgba(20, 28, 38, .45);
+			color: #fff; font: inherit; font-size: 24px;
+			display: flex; align-items: center; justify-content: center;
+		}
+		#touch button:active { background: var(--accent); border-color: #fff; }
+		#touch button.wide { width: 84px; height: 84px; font-size: 28px; }
+
+		/* Écrans tactiles : le clavier n'existe pas, on montre les boutons et on
+		   déplace le HUD pour qu'il ne passe pas dessous. */
+		@media (hover: none) and (pointer: coarse) {
+			#touch { display: flex; }
+			#speedometer { bottom: auto; top: max(12px, env(safe-area-inset-top)); left: 16px; font-size: 26px; }
+			#pause-hint { display: none; }
+		}
+		/* Petits écrans : les réglages passent derrière un bouton, sinon ils occupent
+		   la moitié de l'écran et chevauchent les commandes. */
+		@media (max-width: 860px), ((hover: none) and (pointer: coarse)) {
+			#hud-buttons #settings-toggle { display: flex; }
+			#settings {
+				display: none;
+				bottom: auto; top: max(62px, calc(env(safe-area-inset-top) + 62px));
+				right: max(10px, env(safe-area-inset-right));
+				background: var(--panel); border-radius: 14px; padding: 14px 16px;
+				border: 1px solid rgba(255, 255, 255, .12);
+			}
+			#settings.open { display: block; }
+			#colors div { width: 34px; height: 34px; margin: 4px; }
 		}
 	</style>
 </head>
 
 <body>
 	<div id="container">
-		<img src="/monster-truck.png" width="300">
-		Loading...
+		<div id="loader">
+			<img src="/monster-truck.png" alt="Monster Truck">
+			Chargement du terrain et des modèles…
+		</div>
+	</div>
+
+	<!-- Écran d'accueil : affiché par le jeu une fois les modèles chargés, la scène
+	      3D tournant déjà derrière. -->
+	<div id="home" class="screen">
+		<div class="panel">
+			<h1>Monster Truck</h1>
+			<p class="tagline">Un bac à sable 3D jouable directement dans le navigateur.</p>
+			<img class="hero" src="/monster-truck.png" alt="Le monster truck rouge du jeu">
+
+			<button id="play" class="play" type="button">Jouer</button>
+
+			<p>Un monster truck, un terrain vallonné, et aucun objectif. Grimpez les
+			collines, décollez sur les bosses, allez exploser la pile de caisses.
+			Faites n'importe quoi, c'est justement le but.</p>
+
+			<h2>Commandes</h2>
+			<div class="keys">
+				<span><kbd>Z</kbd> <kbd>S</kbd></span><span>Accélérer, freiner / reculer</span>
+				<span><kbd>Q</kbd> <kbd>D</kbd></span><span>Braquer à gauche, à droite</span>
+				<span><kbd>Espace</kbd></span><span>Sauter</span>
+				<span><kbd>R</kbd></span><span>Remettre les caisses en place</span>
+				<span><kbd>Échap</kbd></span><span>Pause</span>
+				<span>Souris</span><span>Glisser pour tourner autour du camion, molette pour zoomer</span>
+			</div>
+			<p>Les flèches du clavier font la même chose que <kbd>ZQSD</kbd>. Sur
+			téléphone et tablette, des boutons tactiles remplacent le clavier et un
+			glissement du doigt fait pivoter la caméra.</p>
+
+			<div class="ad" id="ad-home"><div class="ad-label">Publicité</div></div>
+
+			<h2>Sous le capot</h2>
+			<p>Ce mini-jeu sert de banc d'essai à plusieurs techniques de rendu et de
+			simulation temps réel :</p>
+			<ul>
+				<li>rendu 3D avec <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a> et WebGL ;</li>
+				<li>physique <a href="https://pybullet.org/" target="_blank" rel="noopener">Bullet</a> via Ammo.js, compilée en WebAssembly : terrain en maillage de collision, caisses, et un véhicule dont les roues et les suspensions sont montées à la main sur des liaisons ressort ;</li>
+				<li>ombres portées douces, reflets de l'environnement sur la carrosserie par sonde cubique, halo de lentille sur le soleil ;</li>
+				<li>modèles du camion, du terrain et des arbres réalisés sous Blender.</li>
+			</ul>
+
+			<div class="foot">
+				<span>Un jeu de Pilow</span>
+				<a href="https://github.com/5pilow" target="_blank" rel="noopener">GitHub</a>
+				<a href="https://leekwars.com" target="_blank" rel="noopener">Leek Wars</a>
+				<a href="/privacy.html">Confidentialité</a>
+			</div>
+		</div>
+	</div>
+
+	<!-- Écran de pause -->
+	<div id="pause" class="screen">
+		<div class="panel">
+			<h1>Pause</h1>
+			<button id="resume" class="play" type="button">Reprendre</button>
+			<button id="back-home" class="play secondary" type="button">Retour à l'accueil</button>
+			<div class="ad" id="ad-pause"><div class="ad-label">Publicité</div></div>
+			<div class="foot">
+				<span><kbd>Échap</kbd> pour reprendre</span>
+				<a href="/privacy.html">Confidentialité</a>
+			</div>
+		</div>
 	</div>
 
 	<div id="hud">
 		<div id="speedometer">0.0 km/h</div>
+		<div id="pause-hint">Échap : pause</div>
 
+		<div id="hud-buttons">
+			<button id="home-button" type="button" title="Retour à l'accueil" aria-label="Retour à l'accueil">&#8962;</button>
+			<button id="settings-toggle" type="button" title="Réglages" aria-label="Réglages">&#9881;</button>
+		</div>
 		<div id="settings">
-			<div>Contrôles : ZQSD, Souris, Espace</div>
 			<div class="option">
-				<span>Suspension</span> <input type="range" id="suspension" name="suspension" min="0" max="5" onmousemove="changeSuspension(event)" />
+				<span>Suspension</span> <input type="range" id="suspension" name="suspension" min="0" max="5" oninput="changeSuspension(event)" />
 			</div>
-			<!-- <div class="option">
-				<span>Hauteur</span> <input type="range" id="height" name="height" min="0" max="5" onmousemove="changeHeight(event)" />
-			</div> -->
 			<div class="option">
-				<span>Métallique</span> <input type="range" id="metallic" name="height" min="0" max="5" value="2" onmousemove="changeMetallic(event)" />
+				<span>Métallique</span> <input type="range" id="metallic" name="metallic" min="0" max="5" value="2" oninput="changeMetallic(event)" />
 			</div>
 			<div id="colors">
 				<div style="background: #ff0000" onclick="setColor(0xff0000)"></div>
@@ -102,9 +348,22 @@
 				<div style="background: #ffffff" onclick="setColor(0xffffff)"></div>
 			</div>
 		</div>
+
+		<div id="touch">
+			<div class="cluster">
+				<button id="touch-left" type="button" aria-label="Gauche">&#9664;</button>
+				<button id="touch-right" type="button" aria-label="Droite">&#9654;</button>
+			</div>
+			<div class="cluster stack">
+				<button id="touch-jump" type="button" aria-label="Sauter">&#10514;</button>
+				<div class="row">
+					<button id="touch-brake" type="button" aria-label="Freiner">&#9660;</button>
+					<button id="touch-accelerate" class="wide" type="button" aria-label="Accélérer">&#9650;</button>
+				</div>
+			</div>
+		</div>
 	</div>
 
-	<div id="app"></div>
 	<script type="module" src="/src/main.ts"></script>
 </body>
 

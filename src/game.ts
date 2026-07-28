@@ -6,6 +6,10 @@ import { Vehicle } from "./vehicle";
 import { Model } from "./model";
 import { Lensflare, LensflareElement } from "./lensflare";
 import { Box } from "./box";
+import { show as showAd } from "./ads";
+
+/** Nombre d'images entre deux rafraîchissements de la sonde de reflet. */
+const CUBE_CAMERA_INTERVAL = 3
 
 class Game {
 
@@ -22,6 +26,8 @@ class Game {
 	private container = document.getElementById('container')!
 	private speedometer = document.getElementById('speedometer')!
 	private hud = document.getElementById('hud')!
+	private homeScreen = document.getElementById('home')!
+	private pauseScreen = document.getElementById('pause')!
 	private cameraX = 0
 	private cameraY = 2
 	private cameraZ = 0
@@ -34,6 +40,11 @@ class Game {
 	private boxes: Box[] = []
 	public currentColor: number = 0xff0000
 	public currentMetallic: number = 2
+	private paintMaterial: THREE.MeshPhongMaterial | null = null
+	private frame = 0
+	// Vecteurs de travail réutilisés, pour ne pas en créer à chaque image.
+	private lookTarget = new THREE.Vector3()
+	private shadowTarget = new THREE.Vector3()
 
 	private down = false
 	private downX: number = 0
@@ -44,19 +55,24 @@ class Game {
 
 	// Keybord actions
 	private actions = {} as {[key: string]: boolean};
+	// e.code désigne la touche par sa POSITION physique : KeyW/KeyA correspondent donc
+	// bien à Z/Q sur un clavier AZERTY. Les flèches sont acceptées en plus, pour ceux
+	// dont la disposition ne place pas ZQSD/WASD au même endroit.
 	private keysActions = {
 		"KeyW": 'acceleration',
 		"KeyS": 'braking',
 		"KeyA": 'left',
 		"KeyD": 'right',
-		"Esc": 'pause'
+		"ArrowUp": 'acceleration',
+		"ArrowDown": 'braking',
+		"ArrowLeft": 'left',
+		"ArrowRight": 'right',
 	} as {[key: string]: string};
 
 	public constructor(ammo: typeof Ammo) {
 
 		this.ammo = ammo
 		this.container.innerHTML = "";
-		this.hud.style.display = 'block'
 
 		// Physics configuration
 		const collisionConfiguration = new ammo.btDefaultCollisionConfiguration();
@@ -68,10 +84,14 @@ class Game {
 
 		this.updateMethod = this.update.bind(this)
 
-		this.stats = new (Stats as any)();
-		this.stats.domElement.style.position = 'absolute';
-		this.stats.domElement.style.top = '0px';
-		this.container.appendChild(this.stats.domElement);
+		// Le compteur de FPS n'a rien à faire sur un jeu public : il encombre l'écran et
+		// donne un air inachevé. Il reste disponible en ajoutant ?stats à l'URL.
+		if (new URLSearchParams(location.search).has('stats')) {
+			this.stats = new (Stats as any)();
+			this.stats.domElement.style.position = 'absolute';
+			this.stats.domElement.style.top = '0px';
+			this.container.appendChild(this.stats.domElement);
+		}
 
 		this.scene = new THREE.Scene();
 
@@ -86,7 +106,9 @@ class Game {
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setClearColor(0xbfd1e5);
 		// renderer.setClearColor(0x001030);
-		this.renderer.setPixelRatio(window.devicePixelRatio);
+		// Plafonné à 2 : au-delà, on quadruple le nombre de pixels à calculer pour un
+		// gain visuel imperceptible, ce qui fait s'écrouler le framerate sur mobile.
+		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
 		this.renderer.shadowMap.enabled = true;
 		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -202,22 +224,49 @@ class Game {
 		this.container.appendChild(this.renderer.domElement);
 
 		window.addEventListener('resize', () => this.onWindowResize(), false);
+		window.addEventListener('orientationchange', () => this.onWindowResize(), false);
 		window.addEventListener('keydown', (e) => this.keydown(e));
 		window.addEventListener('keyup', (e) => this.keyup(e));
-		window.addEventListener('mousedown', (e) => this.mousedown(e))
-		window.addEventListener('mousemove', (e) => this.mousemove(e))
-		window.addEventListener('mouseup', () => this.mouseup())
-		window.addEventListener('mousewheel', (e: any) => this.mousewheel(e))
+
+		// Les événements « pointer » couvrent souris, doigt et stylet d'un seul tenant.
+		// Ils sont posés sur le canvas et non sur window, sinon faire glisser un curseur
+		// de réglage fait aussi pivoter la caméra.
+		const canvas = this.renderer.domElement
+		canvas.addEventListener('pointerdown', (e) => this.pointerdown(e))
+		canvas.addEventListener('pointermove', (e) => this.pointermove(e))
+		canvas.addEventListener('pointerup', () => this.pointerup())
+		canvas.addEventListener('pointercancel', () => this.pointerup())
+		// 'mousewheel' n'a jamais existé sur Firefox : le zoom molette y était mort.
+		canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: true })
+		this.bindTouchControls()
 
 		this.updateCamera()
 
 		this.addBoxes()
+
+		document.getElementById('play')?.addEventListener('click', () => this.start())
+		document.getElementById('resume')?.addEventListener('click', () => this.togglePause())
+		document.getElementById('home-button')?.addEventListener('click', () => this.backHome())
+		document.getElementById('back-home')?.addEventListener('click', () => this.backHome())
+		document.getElementById('settings-toggle')?.addEventListener('click', () => {
+			document.getElementById('settings')?.classList.toggle('open')
+		})
+
+		// La scène tourne derrière l'écran d'accueil : le joueur voit le camion avant
+		// même d'avoir cliqué, ce qui donne tout de suite envie de jouer.
+		this.homeScreen.style.display = 'flex'
+		showAd('home', document.getElementById('ad-home'))
 	}
 
 	public addBoxes() {
+		// this.boxes doit être vidé : sinon les caisses déjà retirées y restent, on
+		// tente de les retirer une seconde fois au rechargement suivant et
+		// removeEntity() supprime alors des entités au hasard (cf. son commentaire).
 		for (const box of this.boxes) {
 			this.removeEntity(box)
+			box.dispose()
 		}
+		this.boxes.length = 0
 		const boxX = 40
 		const boxZ = -25
 		const boxY = 28
@@ -242,11 +291,18 @@ class Game {
 	}
 
 	public removeEntity(entity: Entity) {
+		// Le retrait du monde physique a lieu dans tous les cas : l'appelant peut
+		// enchaîner sur un dispose(), et libérer un corps encore présent dans le monde
+		// laisserait un pointeur mort côté Bullet.
 		entity.remove(this)
-		this.entities.splice(this.entities.indexOf(entity), 1)
+		const index = this.entities.indexOf(entity)
+		// Sans ce test, une entité absente donne indexOf() === -1 et splice(-1, 1)
+		// retire la DERNIÈRE entité de la liste, au hasard : les roues ou le véhicule
+		// cessent alors d'être mis à jour.
+		if (index !== -1) this.entities.splice(index, 1)
 	}
 
-	private mousedown(e: MouseEvent) {
+	private pointerdown(e: PointerEvent) {
 		this.down = true
 		this.downX = e.clientX
 		this.downY = e.clientY
@@ -254,7 +310,7 @@ class Game {
 		this.downCameraY = this.cameraY
 	}
 
-	private mousemove(e: MouseEvent) {
+	private pointermove(e: PointerEvent) {
 		if (this.down) {
 			var dx = e.clientX - this.downX
 			var dy = e.clientY - this.downY
@@ -265,12 +321,13 @@ class Game {
 			this.updateCamera()
 		}
 	}
-	private mouseup() {
+	private pointerup() {
 		this.down = false
 	}
-	private mousewheel(e: WheelEvent) {
+	private onWheel(e: WheelEvent) {
 		this.cameraZoom += e.deltaY * 0.02
 		if (this.cameraZoom < 2) this.cameraZoom = 2
+		if (this.cameraZoom > 40) this.cameraZoom = 40
 		this.updateCamera()
 	}
 	private updateCamera() {
@@ -278,25 +335,62 @@ class Game {
 		this.cameraZ = Math.sin(this.cameraAngle) * this.cameraZoom
 	}
 
+	/**
+	 * Boutons tactiles : sans eux le jeu est simplement injouable sur téléphone,
+	 * puisqu'il n'y a aucun clavier. Chaque bouton pilote la même table d'actions
+	 * que les touches.
+	 */
+	private bindTouchControls() {
+		const bind = (id: string, action: string) => {
+			const el = document.getElementById(id)
+			if (!el) return
+			const set = (value: boolean) => (e: PointerEvent) => {
+				e.preventDefault()
+				e.stopPropagation()
+				this.actions[action] = value
+			}
+			el.addEventListener('pointerdown', set(true))
+			el.addEventListener('pointerup', set(false))
+			el.addEventListener('pointerleave', set(false))
+			el.addEventListener('pointercancel', set(false))
+		}
+		bind('touch-accelerate', 'acceleration')
+		bind('touch-brake', 'braking')
+		bind('touch-left', 'left')
+		bind('touch-right', 'right')
+
+		const jump = document.getElementById('touch-jump')
+		if (jump) {
+			jump.addEventListener('pointerdown', (e) => {
+				e.preventDefault()
+				e.stopPropagation()
+				this.vehicle.jump()
+			})
+		}
+	}
+
 	private onWindowResize() {
 
-		this.camera.aspect = window.innerWidth / window.innerHeight;
+		// Une hauteur nulle (fenêtre réduite au minimum, rotation de l'écran) donnerait
+		// un ratio infini, une matrice de projection invalide et un rendu vide définitif.
+		const width = Math.max(1, window.innerWidth)
+		const height = Math.max(1, window.innerHeight)
+
+		this.camera.aspect = width / height;
 		this.camera.updateProjectionMatrix();
 
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
+		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+		this.renderer.setSize(width, height);
 	}
 
 	private keyup(e: KeyboardEvent) {
 		// console.log("keyup", e)
 		if (e.code === 'Escape') {
-			this.paused = !this.paused
-			if (!this.paused) {
-				this.update()
-			}
+			this.togglePause()
+			return false
 		}
 		if (e.code === "Space") {
-			this.vehicle.jump(this.ammo)
-			// this.vehicle.body.applyTorqueImpulse(new this.ammo.btVector3( 0, 20000, 0) )
+			this.vehicle.jump()
 		}
 		if (e.code === 'KeyR') {
 			this.addBoxes()
@@ -319,10 +413,54 @@ class Game {
 		return true
 	}
 
+	/** Quitte l'écran d'accueil et passe la main au joueur. */
+	public start() {
+		this.homeScreen.style.display = 'none'
+		this.pauseScreen.style.display = 'none'
+		this.hud.style.display = 'block'
+		// Reprendre depuis l'accueil ne doit pas laisser la simulation figée.
+		if (this.paused) {
+			this.paused = false
+			this.clock.getDelta()
+			this.update()
+		}
+	}
+
+	/** Revient à l'écran d'accueil, la scène continuant de tourner derrière. */
+	public backHome() {
+		this.pauseScreen.style.display = 'none'
+		this.hud.style.display = 'none'
+		document.getElementById('settings')?.classList.remove('open')
+		// Les touches maintenues au moment du clic resteraient actives au retour.
+		for (const action of Object.keys(this.actions)) this.actions[action] = false
+		if (this.paused) {
+			this.paused = false
+			this.clock.getDelta()
+			this.update()
+		}
+		this.homeScreen.style.display = 'flex'
+	}
+
+	/** Affiche ou masque l'écran de pause, en suspendant la simulation. */
+	public togglePause() {
+		this.paused = !this.paused
+		this.pauseScreen.style.display = this.paused ? 'flex' : 'none'
+		if (this.paused) {
+			showAd('pause', document.getElementById('ad-pause'))
+		} else {
+			// La boucle a été interrompue pendant la pause : sans cette remise à zéro,
+			// getDelta() renverrait toute la durée de la pause d'un coup.
+			this.clock.getDelta()
+			this.update()
+		}
+	}
+
 	public update() {
 		if (this.paused) return ;
 		requestAnimationFrame(this.updateMethod);
-		var dt = this.clock.getDelta();
+		// Borné : un onglet passé en arrière-plan suspend requestAnimationFrame, et au
+		// retour un dt de plusieurs secondes fait exploser la simulation.
+		var dt = Math.min(this.clock.getDelta(), 0.1);
 		// this.time += dt;
 		for (const entity of this.entities) {
 			entity.update(dt)
@@ -343,12 +481,13 @@ class Game {
 		this.camera.position.y = p.y() + this.cameraY;
 		if (this.camera.position.y < 0.1) this.camera.position.y = 0.1
 		this.camera.position.z = p.z() + this.cameraZ;
-		this.camera.lookAt(new THREE.Vector3(p.x(), p.y() + 0.2, p.z()));
+		this.lookTarget.set(p.x(), p.y() + 0.2, p.z())
+		this.camera.lookAt(this.lookTarget);
 
 		this.dirLight.position.set(p.x() + 100, p.y() + 50, p.z() + 100);
 		this.dirLight.target = this.vehicle.mesh
-		this.dirLight.shadow.camera.lookAt(new THREE.Vector3(p.x(), 0, p.z()));
-		this.dirLight.shadow.camera.up
+		this.shadowTarget.set(p.x(), 0, p.z())
+		this.dirLight.shadow.camera.lookAt(this.shadowTarget);
 		// helper.update()
 
 		this.cubeCamera1.position.set(p.x(), p.y(), p.z());
@@ -359,18 +498,12 @@ class Game {
 		if (this.actions.acceleration || this.actions.braking) {
 			const forceAbs = 15000
 			const force = this.actions.acceleration ? forceAbs : -forceAbs
-			this.vehicle.move(this.ammo, force)
+			this.vehicle.move(force)
 		}
 		if (this.actions.left || this.actions.right) {
-			this.vehicle.steer(this.ammo, this.actions.left ? -0.01 : 0.01)
+			this.vehicle.steer(this.actions.left ? -0.01 : 0.01)
 		} else {
-			this.vehicle.releaseSteer(this.ammo)
-		}
-
-		if (this.actions.jump) {
-			// console.log("jump")
-			this.vehicle.body.applyCentralImpulse(new this.ammo.btVector3( 0, 2000, 0) )
-			// body.applyTorqueImpulse(new Ammo.btVector3( 0, 200, 0) )
+			this.vehicle.releaseSteer()
 		}
 
 		this.draw()
@@ -378,36 +511,53 @@ class Game {
 
 	public draw() {
 
-		Model.TRUCK.visible = false
-		for (const wheel of this.vehicle.wheels) {
-			wheel.mesh.visible = false
+		// La sonde d'environnement rend la scène 6 fois (une par face du cube) : avec le
+		// rendu principal, cela fait 7 rendus complets par image. Un rafraîchissement
+		// une image sur trois est indiscernable sur un reflet de carrosserie et divise
+		// le coût du rendu par plus de deux.
+		if (this.frame % CUBE_CAMERA_INTERVAL === 0) {
+			Model.TRUCK.visible = false
+			for (const wheel of this.vehicle.wheels) {
+				wheel.mesh.visible = false
+			}
+			this.cubeCamera1.update(this.renderer, this.scene);
+			Model.TRUCK.visible = true
+			for (const wheel of this.vehicle.wheels) {
+				wheel.mesh.visible = true
+			}
 		}
-		this.cubeCamera1.update(this.renderer, this.scene);
-		Model.TRUCK.visible = true
-		for (const wheel of this.vehicle.wheels) {
-			wheel.mesh.visible = true
-		}
+		this.frame++
 		this.renderer.render(this.scene, this.camera);
 
-		this.stats.update();
+		if (this.stats) this.stats.update();
 	}
 
 	public setPaint() {
-		var material = new THREE.MeshPhongMaterial({
-			shininess: this.currentMetallic * 3,
-			emissive: this.currentColor,
-			emissiveIntensity: this.currentMetallic,
-			color: this.currentColor,
-			specular: this.currentMetallic > 0 ? 0xffffff : 0x000000,
-			envMap: this.currentMetallic > 0 ? this.cubeRenderTarget.texture : null
-		  });
-		  Model.TRUCK.traverse((o: any) => {
-			if (o.isMesh) {
-				if( o.name === "BodyC10003" || o.name === "BodyC10007" || o.name === "BodyC10010") {
-					o.material = material
+		// Le matériau est créé une seule fois puis modifié : en recréer un à chaque
+		// mouvement de curseur laissait derrière lui autant de matériaux et de
+		// programmes GPU jamais libérés.
+		if (!this.paintMaterial) {
+			this.paintMaterial = new THREE.MeshPhongMaterial()
+			Model.TRUCK.traverse((o: any) => {
+				if (o.isMesh) {
+					if( o.name === "BodyC10003" || o.name === "BodyC10007" || o.name === "BodyC10010") {
+						o.material = this.paintMaterial
+					}
 				}
-			}
-		});
+			});
+		}
+		const material = this.paintMaterial
+		material.shininess = this.currentMetallic * 3
+		material.emissive.setHex(this.currentColor)
+		material.emissiveIntensity = this.currentMetallic
+		material.color.setHex(this.currentColor)
+		material.specular.setHex(this.currentMetallic > 0 ? 0xffffff : 0x000000)
+		const envMap = this.currentMetallic > 0 ? this.cubeRenderTarget.texture : null
+		if (material.envMap !== envMap) {
+			material.envMap = envMap
+			// Changer la présence d'une envMap change le shader : il faut le recompiler.
+			material.needsUpdate = true
+		}
 	}
 }
 

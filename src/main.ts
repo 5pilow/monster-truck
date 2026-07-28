@@ -65,8 +65,11 @@ async function main() {
 	ammo = await Ammo.bind(window)()
 
 	if (!Detector.webgl) {
-		Detector.addGetWebGLMessage(null);
+		// Il manquait le retour : le message était affiché, puis on construisait quand
+		// même le rendu WebGL juste derrière, ce qui plantait aussitôt.
 		document.getElementById('container')!.innerHTML = "";
+		Detector.addGetWebGLMessage(null);
+		return
 	}
 
 	game = new Game(ammo)
@@ -181,30 +184,22 @@ window.setColor = function(color: number) {
 	game.setPaint()
 }
 
+// Ces réglages sont branchés sur l'événement « input », qui ne se déclenche qu'au
+// vrai changement de valeur. Ils l'étaient sur « mousemove », qui part au moindre
+// passage de souris sur le curseur, même sans rien déplacer.
+
 // @ts-ignore
 window.changeSuspension = function(event) {
-	// console.log("change suspension", event.target.valueAsNumber)
-
-	event.stopPropagation()
-
 	game.vehicle.setSuspension(event.target.valueAsNumber)
 }
 
 // @ts-ignore
 window.changeHeight = function(event) {
-	// console.log("change height", event.target.valueAsNumber)
-
-	event.stopPropagation()
-
 	game.vehicle.setHeight(ammo, event.target.valueAsNumber)
 }
 
 // @ts-ignore
 window.changeMetallic = function(event) {
-	// console.log("change height", event.target.valueAsNumber)
-
-	event.stopPropagation()
-
 	game.currentMetallic = event.target.valueAsNumber
 	game.setPaint()
 }

@@ -3,7 +3,6 @@ import Ammo from 'ammojs-typed'
 import { Model } from "./model"
 import { Wheel } from "./wheel"
 import { Game } from "./game"
-import { dot3 } from "./math"
 import * as THREE from 'three'
 
 class Vehicle extends Entity {
@@ -15,10 +14,28 @@ class Vehicle extends Entity {
 	private direction = 0
 	// public cube: THREE.Mesh
 
+	// Ammo est compilé en WebAssembly : ses objets sont alloués dans le tas WASM et
+	// ne sont PAS ramassés par le GC de JavaScript. Tout btVector3 créé dans une
+	// méthode appelée à chaque frame fuit donc définitivement. Ces vecteurs sont
+	// alloués une seule fois puis réutilisés via setValue().
+	private tmpTorque: Ammo.btVector3
+	private angularLowerFront: Ammo.btVector3
+	private angularUpperFront: Ammo.btVector3
+	private angularLowerRear: Ammo.btVector3
+	private angularUpperRear: Ammo.btVector3
+	private jumpImpulse: Ammo.btVector3
+
 	public constructor(ammo: typeof Ammo, pos: THREE.Vector3) {
 		super()
 
 		this.TRANSFORM_AUX = new ammo.btTransform();
+
+		this.tmpTorque = new ammo.btVector3(0, 0, 0)
+		this.angularLowerFront = new ammo.btVector3(0, 0, 0)
+		this.angularUpperFront = new ammo.btVector3(0, 0, 0)
+		this.angularLowerRear = new ammo.btVector3(0, 0, 0)
+		this.angularUpperRear = new ammo.btVector3(0, 0, 0)
+		this.jumpImpulse = new ammo.btVector3(0, 0, 0)
 
 		var chassisWidth = 1.25;
 		var chassisHeight = 1.0;
@@ -73,61 +90,60 @@ class Vehicle extends Entity {
 		}
 	}
 
-	move(ammo: typeof Ammo, force: number) {
-		const torqueOrigin = new ammo.btVector3( 0, -force, 0)
+	move(force: number) {
 
 		// for (const wheel of [wheel3, wheel4]) {
 		for (const wheel of this.wheels) {
 
 			var basis = wheel.body.getCenterOfMassTransform().getBasis()
 
-			let row0 = basis.getRow(0)
-			row0 = new ammo.btVector3(row0.x(), row0.y(), row0.z())
-			let row1 = basis.getRow(1)
-			row1 = new ammo.btVector3(row1.x(), row1.y(), row1.z())
-			let row2 = basis.getRow(2)
-			row2 = new ammo.btVector3(row2.x(), row2.y(), row2.z())
-			const torque = dot3(ammo, torqueOrigin, row0, row1, row2)
+			// Le couple (0, -force, 0) exprimé dans le repère de la roue, c'est-à-dire
+			// projeté sur les lignes de sa base : seule la composante y compte.
+			const y0 = basis.getRow(0).y()
+			const y1 = basis.getRow(1).y()
+			const y2 = basis.getRow(2).y()
+			this.tmpTorque.setValue(-force * y0, -force * y1, -force * y2)
 
-			// console.log("torque", torque.x(), torque.y(), torque.z())
-
-			wheel.body.applyTorque(torque)
+			wheel.body.applyTorque(this.tmpTorque)
 		}
 	}
 
-	steer(ammo: typeof Ammo, dir: number) {
+	steer(dir: number) {
 		const max = 0.3
 		this.direction += dir
 		if (this.direction < -max) this.direction = -max
 		if (this.direction > max) this.direction = max
-		this.wheels[0].constraint.setAngularLowerLimit(new ammo.btVector3( -Math.PI, this.direction, 0));
-		this.wheels[0].constraint.setAngularUpperLimit(new ammo.btVector3( Math.PI, this.direction, 0));
-		this.wheels[1].constraint.setAngularLowerLimit(new ammo.btVector3( -Math.PI, this.direction, 0,));
-		this.wheels[1].constraint.setAngularUpperLimit(new ammo.btVector3( Math.PI, this.direction, 0));
-		this.wheels[2].constraint.setAngularLowerLimit(new ammo.btVector3( -Math.PI, -this.direction, 0));
-		this.wheels[2].constraint.setAngularUpperLimit(new ammo.btVector3( Math.PI, -this.direction, 0));
-		this.wheels[3].constraint.setAngularLowerLimit(new ammo.btVector3( -Math.PI, -this.direction, 0,));
-		this.wheels[3].constraint.setAngularUpperLimit(new ammo.btVector3( Math.PI, -this.direction, 0));
+		this.applySteer()
 	}
 
-	releaseSteer(ammo: typeof Ammo) {
+	releaseSteer() {
+		// Une fois le braquage revenu à zéro il n'y a plus rien à faire : sans cette
+		// sortie anticipée on repousserait les mêmes limites à chaque frame pour rien.
+		if (this.direction === 0) return
 		this.direction *= 0.9
-		this.wheels[0].constraint.setAngularLowerLimit(new ammo.btVector3( -Math.PI, this.direction, 0));
-		this.wheels[0].constraint.setAngularUpperLimit(new ammo.btVector3( Math.PI, this.direction, 0));
-		this.wheels[1].constraint.setAngularLowerLimit(new ammo.btVector3( -Math.PI, this.direction, 0,));
-		this.wheels[1].constraint.setAngularUpperLimit(new ammo.btVector3( Math.PI, this.direction, 0));
-		this.wheels[2].constraint.setAngularLowerLimit(new ammo.btVector3( -Math.PI, -this.direction, 0));
-		this.wheels[2].constraint.setAngularUpperLimit(new ammo.btVector3( Math.PI, -this.direction, 0));
-		this.wheels[3].constraint.setAngularLowerLimit(new ammo.btVector3( -Math.PI, -this.direction, 0,));
-		this.wheels[3].constraint.setAngularUpperLimit(new ammo.btVector3( Math.PI, -this.direction, 0));
+		if (Math.abs(this.direction) < 1e-4) this.direction = 0
+		this.applySteer()
 	}
 
-	public jump(ammo: typeof Ammo) {
+	private applySteer() {
+		this.angularLowerFront.setValue(-Math.PI, this.direction, 0)
+		this.angularUpperFront.setValue(Math.PI, this.direction, 0)
+		this.angularLowerRear.setValue(-Math.PI, -this.direction, 0)
+		this.angularUpperRear.setValue(Math.PI, -this.direction, 0)
+		this.wheels[0].constraint.setAngularLowerLimit(this.angularLowerFront);
+		this.wheels[0].constraint.setAngularUpperLimit(this.angularUpperFront);
+		this.wheels[1].constraint.setAngularLowerLimit(this.angularLowerFront);
+		this.wheels[1].constraint.setAngularUpperLimit(this.angularUpperFront);
+		this.wheels[2].constraint.setAngularLowerLimit(this.angularLowerRear);
+		this.wheels[2].constraint.setAngularUpperLimit(this.angularUpperRear);
+		this.wheels[3].constraint.setAngularLowerLimit(this.angularLowerRear);
+		this.wheels[3].constraint.setAngularUpperLimit(this.angularUpperRear);
+	}
+
+	public jump() {
 		const force = 20000
-		this.body.applyCentralImpulse(new ammo.btVector3( 0, force, 0) )
-		// for (const wheel of this.wheels) {
-			// wheel.body.applyCentralImpulse(new ammo.btVector3( 0, force / 3, 0) )
-		// }
+		this.jumpImpulse.setValue(0, force, 0)
+		this.body.applyCentralImpulse(this.jumpImpulse)
 	}
 
 	public update() {

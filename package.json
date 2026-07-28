@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "deploy": "rsync -rav dist/* pierre@pilow.fr:/home/pierre/sites/monster-truck"
+    "deploy": "rsync -rav --delete --chown=pierre:pierre dist/ root@monster-truck.pilow.fr:/home/pierre/sites/monster-truck/"
   },
   "devDependencies": {
     "typescript": "^4.5.4",
