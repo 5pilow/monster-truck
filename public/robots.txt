@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Les modèles 3D pèsent plusieurs dizaines de Mo chacun : inutile de les faire
+# explorer par les robots, ça ne sert à rien pour l'indexation et ça coûte
+# beaucoup de bande passante.
+Disallow: /model/
+
+Sitemap: https://monster-truck.pilow.fr/sitemap.xml
