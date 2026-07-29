@@ -157,6 +157,9 @@ function createObjects(ammo: typeof Ammo) {
 	setShadow(Model.TREE11)
 	setShadow(Model.TREE12)
 
+	const treeBounds = new THREE.Box3()
+	const treeSize = new THREE.Vector3()
+
 	for (let i = 0; i < 100; ++i) {
 		const x = -400 + Math.random() * 800
 		const z = -400 + Math.random() * 800
@@ -174,7 +177,57 @@ function createObjects(ammo: typeof Ammo) {
 		model.scale.set(scale, scale, scale)
 		model.rotateY(Math.random() * Math.PI * 2)
 		game.scene.add(model)
+
+		addTrunkCollider(ammo, model, treeBounds, treeSize, x, z)
 	}
+}
+
+/**
+ * Cylindre de collision statique autour du tronc, pour qu'on ne traverse plus les
+ * arbres. Seul le tronc bloque : le feuillage reste traversable, sinon on heurterait
+ * un mur invisible bien avant d'atteindre l'arbre.
+ */
+function addTrunkCollider(ammo: typeof Ammo, model: THREE.Object3D, bounds: THREE.Box3, size: THREE.Vector3, x: number, z: number) {
+
+	bounds.setFromObject(model)
+	bounds.getSize(size)
+
+	// Le rayon est déduit de la hauteur de l'arbre, et non de son emprise au sol :
+	// l'emprise est celle du feuillage, plusieurs fois plus large que le tronc. Un
+	// quarantième de la hauteur donne un tronc crédible sur les trois modèles.
+	// Mesurer les sommets du bas du maillage ne marche pas ici : sur deux des trois
+	// modèles le feuillage descend sous la base du tronc, si bien que la tranche
+	// basse ne contient que des feuilles.
+	const radius = Math.min(Math.max(size.y / 40, 0.2), 2)
+	const halfHeight = Math.max(0.5, size.y * 0.5)
+	// Le cylindre est calé sur la boîte englobante, pas sur la position du modèle :
+	// plusieurs arbres descendent sous leur propre origine (le feuillage de tree10
+	// va à -5,85 en unités locales), et partir de l'origine faisait dépasser le
+	// cylindre loin au-dessus du feuillage.
+	const centerY = bounds.min.y + halfHeight
+
+	const halfExtents = new ammo.btVector3(radius, halfHeight, radius)
+	const shape = new ammo.btCylinderShape(halfExtents)
+
+	const transform = new ammo.btTransform()
+	transform.setIdentity()
+	const origin = new ammo.btVector3(x, centerY, z)
+	transform.setOrigin(origin)
+	const motionState = new ammo.btDefaultMotionState(transform)
+
+	// Masse nulle : l'arbre ne bouge pas, c'est le camion qui s'arrête.
+	const localInertia = new ammo.btVector3(0, 0, 0)
+	const rbInfo = new ammo.btRigidBodyConstructionInfo(0, motionState, shape, localInertia)
+	const body = new ammo.btRigidBody(rbInfo)
+	body.setFriction(1)
+	game.world.addRigidBody(body)
+
+	// Objets de construction libérés : le tas WebAssembly n'est pas ramassé.
+	ammo.destroy(rbInfo)
+	ammo.destroy(localInertia)
+	ammo.destroy(transform)
+	ammo.destroy(origin)
+	ammo.destroy(halfExtents)
 }
 
 // @ts-ignore

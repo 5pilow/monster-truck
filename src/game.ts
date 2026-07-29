@@ -11,6 +11,17 @@ import { show as showAd } from "./ads";
 /** Nombre d'images entre deux rafraîchissements de la sonde de reflet. */
 const CUBE_CAMERA_INTERVAL = 3
 
+/**
+ * Signe de l'axe local Z du châssis qui pointe vers l'avant du camion. Mesuré en
+ * accélérant et en observant le signe de la projection de la vitesse : le nez est
+ * du côté des Z positifs.
+ */
+const FORWARD_AXIS_SIGN = 1
+
+/** Distance caméra minimale et maximale, en unités du monde. */
+const ZOOM_MIN = 2
+const ZOOM_MAX = 40
+
 class Game {
 
 	public ammo: typeof Ammo
@@ -47,8 +58,12 @@ class Game {
 	private shadowTarget = new THREE.Vector3()
 
 	private down = false
-	/** Identifiant du pointeur qui pilote la caméra, null si aucun. */
+	/** Identifiant du pointeur qui pilote la rotation, null si aucun. */
 	private activePointer: number | null = null
+	/** Pointeurs actuellement posés sur le canvas, pour le pincement à deux doigts. */
+	private pointers = new Map<number, { x: number, y: number }>()
+	private pinchStartDistance = 0
+	private pinchStartZoom = 0
 	private downX: number = 0
 	private downY: number = 0
 	private cameraAngle = - Math.PI / 2 - 0.4
@@ -305,10 +320,7 @@ class Game {
 	}
 
 	private pointerdown(e: PointerEvent) {
-		// Un seul pointeur pilote la caméra : un seconde doigt pose sur le canvas ne
-		// doit pas venir reprendre le geste en cours.
-		if (this.activePointer !== null) return
-		this.activePointer = e.pointerId
+		this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
 		// La capture garde le geste lié au canvas même si le doigt en sort, et évite
 		// que le pointeur soit perdu en cours de route.
 		try {
@@ -316,6 +328,18 @@ class Game {
 		} catch (error) {
 			// Capture refusée (pointeur déjà relâché) : le glissement fonctionne quand même.
 		}
+
+		if (this.pointers.size >= 2) {
+			// Deux doigts : on passe en pincement et on interrompt la rotation, sinon la
+			// caméra tournerait en même temps qu'on zoome.
+			this.down = false
+			this.activePointer = null
+			this.startPinch()
+			return
+		}
+
+		// Un seul doigt : rotation.
+		this.activePointer = e.pointerId
 		this.down = true
 		this.downX = e.clientX
 		this.downY = e.clientY
@@ -324,6 +348,24 @@ class Game {
 	}
 
 	private pointermove(e: PointerEvent) {
+		const tracked = this.pointers.get(e.pointerId)
+		if (tracked) {
+			tracked.x = e.clientX
+			tracked.y = e.clientY
+		}
+
+		if (this.pointers.size >= 2) {
+			const distance = this.pinchDistance()
+			if (distance > 0 && this.pinchStartDistance > 0) {
+				// Doigts qui s'écartent : on se rapproche du camion.
+				this.cameraZoom = this.pinchStartZoom * this.pinchStartDistance / distance
+				if (this.cameraZoom < ZOOM_MIN) this.cameraZoom = ZOOM_MIN
+				if (this.cameraZoom > ZOOM_MAX) this.cameraZoom = ZOOM_MAX
+				this.updateCamera()
+			}
+			return
+		}
+
 		if (this.down && e.pointerId === this.activePointer) {
 			var dx = e.clientX - this.downX
 			var dy = e.clientY - this.downY
@@ -334,22 +376,65 @@ class Game {
 			this.updateCamera()
 		}
 	}
+
 	private pointerup(e?: PointerEvent) {
-		if (e && this.activePointer !== null && e.pointerId !== this.activePointer) return
-		if (this.activePointer !== null) {
+		if (e) {
+			this.pointers.delete(e.pointerId)
 			try {
-				this.renderer.domElement.releasePointerCapture(this.activePointer)
+				this.renderer.domElement.releasePointerCapture(e.pointerId)
 			} catch (error) {
 				// Déjà relâchée, rien à faire.
 			}
+		} else {
+			this.pointers.clear()
 		}
+
+		if (this.pointers.size >= 2) {
+			// Il reste au moins deux doigts : on repart d'un pincement propre.
+			this.startPinch()
+			return
+		}
+
+		this.pinchStartDistance = 0
+
+		const remaining = this.pointers.keys().next()
+		if (!remaining.done) {
+			// Un doigt reste posé après un pincement : la rotation reprend à partir de sa
+			// position actuelle, sinon la caméra sauterait d'un coup.
+			const id = remaining.value
+			const point = this.pointers.get(id)!
+			this.activePointer = id
+			this.down = true
+			this.downX = point.x
+			this.downY = point.y
+			this.downAngle = this.cameraAngle
+			this.downCameraY = this.cameraY
+			return
+		}
+
 		this.activePointer = null
 		this.down = false
 	}
+
+	/** Mémorise l'écartement et la distance caméra au début d'un pincement. */
+	private startPinch() {
+		this.pinchStartDistance = this.pinchDistance()
+		this.pinchStartZoom = this.cameraZoom
+	}
+
+	/** Écartement entre les deux premiers doigts posés, 0 s'il y en a moins de deux. */
+	private pinchDistance() {
+		const iterator = this.pointers.values()
+		const a = iterator.next()
+		const b = iterator.next()
+		if (a.done || b.done) return 0
+		return Math.hypot(a.value.x - b.value.x, a.value.y - b.value.y)
+	}
+
 	private onWheel(e: WheelEvent) {
 		this.cameraZoom += e.deltaY * 0.02
-		if (this.cameraZoom < 2) this.cameraZoom = 2
-		if (this.cameraZoom > 40) this.cameraZoom = 40
+		if (this.cameraZoom < ZOOM_MIN) this.cameraZoom = ZOOM_MIN
+		if (this.cameraZoom > ZOOM_MAX) this.cameraZoom = ZOOM_MAX
 		this.updateCamera()
 	}
 	private updateCamera() {
@@ -489,15 +574,28 @@ class Game {
 		}
 		this.world.stepSimulation(dt , 10);
 
-		var speed = this.vehicle.body.getLinearVelocity().length();
-
 		var ms = this.vehicle.body.getMotionState();
 		ms.getWorldTransform(this.vehicle.TRANSFORM_AUX);
 		var p = this.vehicle.TRANSFORM_AUX.getOrigin();
 		var q = this.vehicle.TRANSFORM_AUX.getRotation();
 
+		// Bullet travaille en mètres par seconde : il faut multiplier par 3,6 pour
+		// afficher des km/h. Sans ça le compteur annonçait 6 quand le camion roulait
+		// en réalité à 22 km/h.
+		const velocity = this.vehicle.body.getLinearVelocity()
+		const speed = velocity.length() * 3.6
+		// Sens de marche : la vitesse projetée sur l'axe longitudinal du châssis.
+		// getLinearVelocity().length() est toujours positif, donc le test « < 0 »
+		// d'origine ne pouvait jamais afficher la marche arrière.
+		const chassis = this.vehicle.TRANSFORM_AUX.getBasis()
+		const forward = velocity.x() * chassis.getRow(0).z()
+			+ velocity.y() * chassis.getRow(1).z()
+			+ velocity.z() * chassis.getRow(2).z()
+		// Zone morte : à l'arrêt le signe de la projection sautille.
+		const reverse = speed > 1 && forward * FORWARD_AXIS_SIGN < 0
+
 		// const position = "[" + Math.round(p.x()) + ", " + Math.round(p.y()) + ", " + Math.round(p.z()) + "]"
-		this.speedometer.innerHTML = (speed < 0 ? '(R) ' : '') + Math.abs(speed).toFixed(1) + ' km/h ' // + position;
+		this.speedometer.innerHTML = (reverse ? '(R) ' : '') + speed.toFixed(0) + ' km/h ' // + position;
 
 		this.camera.position.x = p.x() + this.cameraX;
 		this.camera.position.y = p.y() + this.cameraY;
