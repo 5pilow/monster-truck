@@ -41,6 +41,12 @@
 			/* Empeche le « tirer pour rafraichir » et l'effet de rebond de venir
 			   interrompre un glissement de camera. */
 			overscroll-behavior: none;
+			/* Sans ça, maintenir un bouton tactile sélectionne son glyphe et fait
+			   surgir le menu « Copier / Partager » du téléphone par-dessus le jeu.
+			   Le texte des écrans d'accueil et de pause reste sélectionnable, lui. */
+			-webkit-user-select: none;
+			user-select: none;
+			-webkit-touch-callout: none;
 		}
 
 		/* Le canvas est en position fixe : quand il était enfant du conteneur en
@@ -76,6 +82,9 @@
 		.panel {
 			width: 100%; max-width: 620px;
 			margin: auto;
+			/* Du vrai contenu : on doit pouvoir le sélectionner et le copier. */
+			-webkit-user-select: text;
+			user-select: text;
 			background: var(--panel);
 			border: 1px solid rgba(255, 255, 255, .12);
 			border-radius: 18px;
