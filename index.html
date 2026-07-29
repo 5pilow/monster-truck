@@ -38,13 +38,20 @@
 			background-color: #eee;
 			margin: 0px;
 			overflow: hidden;
+			/* Empeche le « tirer pour rafraichir » et l'effet de rebond de venir
+			   interrompre un glissement de camera. */
+			overscroll-behavior: none;
 		}
 
 		/* Le canvas est en position fixe : quand il était enfant du conteneur en
 		   flex-column, la hauteur du canvas s'ajoutait à celle des autres enfants et
 		   le rendu se retrouvait décalé verticalement hors de l'écran. */
 		#container { position: fixed; inset: 0; }
-		#container canvas { display: block; }
+		/* touch-action: none est indispensable. Sans lui, le navigateur considere le
+		   glissement du doigt comme un defilement au bout de quelques pixels, prend la
+		   main sur le geste et emet un pointercancel : la rotation de la camera
+		   s'arretait aussitot et il fallait relever le doigt pour repartir. */
+		#container canvas { display: block; touch-action: none; }
 
 		#loader {
 			position: fixed; inset: 0;

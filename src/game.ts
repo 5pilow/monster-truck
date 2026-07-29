@@ -47,6 +47,8 @@ class Game {
 	private shadowTarget = new THREE.Vector3()
 
 	private down = false
+	/** Identifiant du pointeur qui pilote la caméra, null si aucun. */
+	private activePointer: number | null = null
 	private downX: number = 0
 	private downY: number = 0
 	private cameraAngle = - Math.PI / 2 - 0.4
@@ -234,8 +236,8 @@ class Game {
 		const canvas = this.renderer.domElement
 		canvas.addEventListener('pointerdown', (e) => this.pointerdown(e))
 		canvas.addEventListener('pointermove', (e) => this.pointermove(e))
-		canvas.addEventListener('pointerup', () => this.pointerup())
-		canvas.addEventListener('pointercancel', () => this.pointerup())
+		canvas.addEventListener('pointerup', (e) => this.pointerup(e))
+		canvas.addEventListener('pointercancel', (e) => this.pointerup(e))
 		// 'mousewheel' n'a jamais existé sur Firefox : le zoom molette y était mort.
 		canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: true })
 		this.bindTouchControls()
@@ -303,6 +305,17 @@ class Game {
 	}
 
 	private pointerdown(e: PointerEvent) {
+		// Un seul pointeur pilote la caméra : un seconde doigt pose sur le canvas ne
+		// doit pas venir reprendre le geste en cours.
+		if (this.activePointer !== null) return
+		this.activePointer = e.pointerId
+		// La capture garde le geste lié au canvas même si le doigt en sort, et évite
+		// que le pointeur soit perdu en cours de route.
+		try {
+			this.renderer.domElement.setPointerCapture(e.pointerId)
+		} catch (error) {
+			// Capture refusée (pointeur déjà relâché) : le glissement fonctionne quand même.
+		}
 		this.down = true
 		this.downX = e.clientX
 		this.downY = e.clientY
@@ -311,7 +324,7 @@ class Game {
 	}
 
 	private pointermove(e: PointerEvent) {
-		if (this.down) {
+		if (this.down && e.pointerId === this.activePointer) {
 			var dx = e.clientX - this.downX
 			var dy = e.clientY - this.downY
 			this.cameraAngle = this.downAngle + dx * 0.005
@@ -321,7 +334,16 @@ class Game {
 			this.updateCamera()
 		}
 	}
-	private pointerup() {
+	private pointerup(e?: PointerEvent) {
+		if (e && this.activePointer !== null && e.pointerId !== this.activePointer) return
+		if (this.activePointer !== null) {
+			try {
+				this.renderer.domElement.releasePointerCapture(this.activePointer)
+			} catch (error) {
+				// Déjà relâchée, rien à faire.
+			}
+		}
+		this.activePointer = null
 		this.down = false
 	}
 	private onWheel(e: WheelEvent) {
