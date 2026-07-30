@@ -7,6 +7,7 @@ import { Model } from "./model";
 import { Lensflare, LensflareElement } from "./lensflare";
 import { Box } from "./box";
 import { show as showAd } from "./ads";
+import { setupConsent } from "./consent";
 
 /** Nombre d'images entre deux rafraîchissements de la sonde de reflet. */
 const CUBE_CAMERA_INTERVAL = 3
@@ -280,6 +281,9 @@ class Game {
 		// même d'avoir cliqué, ce qui donne tout de suite envie de jouer.
 		this.homeScreen.style.display = 'flex'
 		showAd('home', document.getElementById('ad-home'))
+		// Lien « Cookies » dans les pieds de page + masquage du widget flottant de
+		// Google, l'un conditionnant l'autre (cf. consent.ts).
+		setupConsent()
 	}
 
 	public addBoxes() {
