@@ -18,13 +18,13 @@ class Model {
 		// huit allers-retours. En parallèle, c'est le plus lent qui donne le tempo.
 		// (tree.glb était chargé ici sans être utilisé nulle part : 7,6 Mo pour rien.)
 		const [crate, truck, wheel, ground, tree10, tree11, tree12] = await Promise.all([
-			Model.loader.loadAsync('model/crate.glb'),
-			Model.loader.loadAsync('model/truck.glb'),
-			Model.loader.loadAsync('model/wheel.glb'),
-			Model.loader.loadAsync('model/ground.glb'),
-			Model.loader.loadAsync('model/tree10.glb'),
-			Model.loader.loadAsync('model/tree11.glb'),
-			Model.loader.loadAsync('model/tree12.glb'),
+			Model.loader.loadAsync('/model/crate.glb'),
+			Model.loader.loadAsync('/model/truck.glb'),
+			Model.loader.loadAsync('/model/wheel.glb'),
+			Model.loader.loadAsync('/model/ground.glb'),
+			Model.loader.loadAsync('/model/tree10.glb'),
+			Model.loader.loadAsync('/model/tree11.glb'),
+			Model.loader.loadAsync('/model/tree12.glb'),
 		])
 
 		Model.CRATE = crate.scene

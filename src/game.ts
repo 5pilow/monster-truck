@@ -140,7 +140,7 @@ class Game {
 		// renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
 		const loader = new THREE.TextureLoader();
 		const texture = loader.load(
-		  'sky.jpg',
+		  '/sky.jpg',
 		  () => {
 			const rt = new THREE.WebGLCubeRenderTarget(texture.image.height);
 			rt.fromEquirectangularTexture(this.renderer, texture);
@@ -174,8 +174,8 @@ class Game {
    		// scene.add( helper );
 
 		const textureLoader = new THREE.TextureLoader();
-		const textureFlare0 = textureLoader.load("sun.png")
-		const textureFlare1 = textureLoader.load("lens.png")
+		const textureFlare0 = textureLoader.load("/sun.png")
+		const textureFlare1 = textureLoader.load("/lens.png")
 		const lensflare = new Lensflare();
 		// @ts-ignore
 		lensflare.addElement( new LensflareElement( textureFlare0, 400, 0, new THREE.Color(0xffff00) ) );
