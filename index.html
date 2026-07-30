@@ -111,6 +111,59 @@
 		.tagline { text-align: center; color: #9fb0c4 !important; margin-top: 6px !important; }
 		.panel img.hero { display: block; width: 260px; max-width: 80%; height: auto; margin: 6px auto 0; }
 
+		/* ---------- Accueil : deux colonnes pour tenir sans défilement ---------- */
+
+		#home .panel {
+			max-width: 1060px;
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			grid-template-areas:
+				"head  head"
+				"intro extra"
+				"keys  extra"
+				"foot  foot";
+			/* La colonne de droite est alignée en haut plutôt qu'étirée. */
+			align-content: start;
+			column-gap: 38px;
+			/* Resserré : la hauteur du panneau est celle de la plus grande colonne, et
+			   l'encart de 280 px dans la colonne de droite laisse peu de marge pour
+			   tenir dans une fenêtre de 900 px sans défilement. */
+			padding: 20px 24px 14px;
+		}
+		.home-head { grid-area: head; }
+		.home-intro { grid-area: intro; }
+		.home-keys { grid-area: keys; }
+		.home-extra { grid-area: extra; }
+		#home .foot { grid-area: foot; }
+		#home .panel h1 { font-size: clamp(26px, 5vw, 34px); }
+		#home .panel h2 { margin: 14px 0 6px; }
+		#home .panel p { margin: 8px 0; }
+		#home .panel ul { margin: 6px 0; }
+		#home img.hero { width: 190px; margin-top: 2px; }
+		#home .home-extra .ad { margin-top: 4px; }
+		#home .foot { margin-top: 16px; padding-top: 12px; }
+		#home .play { margin: 16px 0 4px; }
+		.hint { font-size: 13px; color: #9fb0c4 !important; }
+
+		/* Fenêtre basse (écrans 768 ou 800 px de haut) : on récupère de la hauteur sur
+		   le rembourrage et l'image, pour continuer à tenir sans défilement. */
+		@media (max-height: 830px) {
+			#home { padding-top: 10px; padding-bottom: 10px; }
+			#home img.hero { width: 150px; }
+			#home .panel { padding: 16px 24px 12px; }
+		}
+
+		/* En dessous, une seule colonne : l'écran n'est plus assez large pour deux.
+		   L'encart reste haut dans la page, juste après les commandes. */
+		@media (max-width: 900px) {
+			#home .panel {
+				max-width: 620px;
+				grid-template-columns: 1fr;
+				grid-template-areas: "head" "intro" "keys" "extra" "foot";
+				column-gap: 0;
+			}
+		}
+
 		.play {
 			display: block; width: 100%;
 			margin: 22px 0 6px;
@@ -275,44 +328,48 @@
 		</div>
 	</div>
 
-	<!-- Écran d'accueil : affiché par le jeu une fois les modèles chargés, la scène
-	      3D tournant déjà derrière. -->
+	<!-- Écran d'accueil : affiché par le jeu une fois les modèles chargés. La scène 3D
+	      est visible derrière mais la simulation est à l'arrêt jusqu'au clic sur Jouer.
+	      Deux colonnes sur grand écran pour tenir sans défilement. -->
 	<div id="home" class="screen">
 		<div class="panel">
-			<h1>Monster Truck</h1>
-			<p class="tagline">Un bac à sable 3D jouable directement dans le navigateur.</p>
-			<img class="hero" src="/monster-truck.png" alt="Le monster truck rouge du jeu">
+			<header class="home-head">
+				<h1>Monster Truck</h1>
+				<p class="tagline">Un bac à sable 3D jouable directement dans le navigateur.</p>
+			</header>
 
-			<button id="play" class="play" type="button">Jouer</button>
-
-			<p>Un monster truck, un terrain vallonné, et aucun objectif. Grimpez les
-			collines, décollez sur les bosses, allez exploser la pile de caisses.
-			Faites n'importe quoi, c'est justement le but.</p>
-
-			<h2>Commandes</h2>
-			<div class="keys">
-				<span><kbd>Z</kbd> <kbd>S</kbd></span><span>Accélérer, freiner / reculer</span>
-				<span><kbd>Q</kbd> <kbd>D</kbd></span><span>Braquer à gauche, à droite</span>
-				<span><kbd>Espace</kbd></span><span>Sauter</span>
-				<span><kbd>R</kbd></span><span>Remettre les caisses en place</span>
-				<span><kbd>Échap</kbd></span><span>Pause</span>
-				<span>Souris</span><span>Glisser pour tourner autour du camion, molette pour zoomer</span>
+			<div class="home-intro">
+				<img class="hero" src="/monster-truck.png" alt="Le monster truck rouge du jeu">
+				<button id="play" class="play" type="button">Jouer</button>
+				<p>Un monster truck, un terrain vallonné, et aucun objectif. Grimpez les
+				collines, décollez sur les bosses, allez exploser la pile de caisses.
+				Faites n'importe quoi, c'est justement le but.</p>
 			</div>
-			<p>Les flèches du clavier font la même chose que <kbd>ZQSD</kbd>. Sur
-			téléphone et tablette, des boutons tactiles remplacent le clavier et un
-			glissement du doigt fait pivoter la caméra.</p>
 
-			<div class="ad" id="ad-home"><div class="ad-label">Publicité</div></div>
+			<div class="home-keys">
+				<h2>Commandes</h2>
+				<div class="keys">
+					<span><kbd>Z</kbd> <kbd>S</kbd></span><span>Accélérer, freiner / reculer</span>
+					<span><kbd>Q</kbd> <kbd>D</kbd></span><span>Braquer à gauche, à droite</span>
+					<span><kbd>Espace</kbd></span><span>Sauter</span>
+					<span><kbd>R</kbd></span><span>Remettre les caisses</span>
+					<span><kbd>Échap</kbd></span><span>Pause</span>
+					<span>Souris</span><span>Glisser pour tourner, molette pour zoomer</span>
+				</div>
+				<p class="hint">Les flèches marchent aussi. Sur téléphone, des boutons
+				tactiles remplacent le clavier et deux doigts zooment.</p>
+			</div>
 
-			<h2>Sous le capot</h2>
-			<p>Ce mini-jeu sert de banc d'essai à plusieurs techniques de rendu et de
-			simulation temps réel :</p>
-			<ul>
-				<li>rendu 3D avec <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a> et WebGL ;</li>
-				<li>physique <a href="https://pybullet.org/" target="_blank" rel="noopener">Bullet</a> via Ammo.js, compilée en WebAssembly : terrain en maillage de collision, caisses, et un véhicule dont les roues et les suspensions sont montées à la main sur des liaisons ressort ;</li>
-				<li>ombres portées douces, reflets de l'environnement sur la carrosserie par sonde cubique, halo de lentille sur le soleil ;</li>
-				<li>modèles du camion, du terrain et des arbres réalisés sous Blender.</li>
-			</ul>
+			<div class="home-extra">
+				<div class="ad" id="ad-home"><div class="ad-label">Publicité</div></div>
+				<h2>Sous le capot</h2>
+				<ul>
+					<li>rendu 3D <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a> et WebGL ;</li>
+					<li>physique <a href="https://pybullet.org/" target="_blank" rel="noopener">Bullet</a> via Ammo.js en WebAssembly : terrain en maillage de collision, roues et suspensions montées à la main sur des liaisons ressort ;</li>
+					<li>ombres douces, reflets par sonde cubique, halo de lentille ;</li>
+					<li>modèles réalisés sous Blender.</li>
+				</ul>
+			</div>
 
 			<div class="foot">
 				<span>Un jeu de Pilow</span>

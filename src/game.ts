@@ -48,6 +48,13 @@ class Game {
 	public cubeRenderTarget
 	private cubeCamera1
 	private paused = false
+	/**
+	 * Faux tant que le joueur n'a pas cliqué sur Jouer, et de nouveau faux au retour à
+	 * l'accueil. La scène continue d'être rendue (on voit le décor derrière le
+	 * panneau, la caméra reste orbitable) mais la simulation n'avance pas : sur
+	 * l'écran d'accueil le camion doit rester en place.
+	 */
+	private started = false
 	private boxes: Box[] = []
 	public currentColor: number = 0xff0000
 	public currentMetallic: number = 2
@@ -492,6 +499,9 @@ class Game {
 
 	private keyup(e: KeyboardEvent) {
 		// console.log("keyup", e)
+		// Sur l'écran d'accueil, les touches de jeu ne doivent rien déclencher : ni
+		// pause par-dessus l'accueil, ni saut, ni rechargement des caisses.
+		if (!this.started) return true
 		if (e.code === 'Escape') {
 			this.togglePause()
 			return false
@@ -520,11 +530,12 @@ class Game {
 		return true
 	}
 
-	/** Quitte l'écran d'accueil et passe la main au joueur. */
+	/** Quitte l'écran d'accueil et lance la simulation. */
 	public start() {
 		this.homeScreen.style.display = 'none'
 		this.pauseScreen.style.display = 'none'
 		this.hud.style.display = 'block'
+		this.started = true
 		// Reprendre depuis l'accueil ne doit pas laisser la simulation figée.
 		if (this.paused) {
 			this.paused = false
@@ -533,8 +544,9 @@ class Game {
 		}
 	}
 
-	/** Revient à l'écran d'accueil, la scène continuant de tourner derrière. */
+	/** Revient à l'écran d'accueil et y remet la simulation à l'arrêt. */
 	public backHome() {
+		this.started = false
 		this.pauseScreen.style.display = 'none'
 		this.hud.style.display = 'none'
 		document.getElementById('settings')?.classList.remove('open')
@@ -572,7 +584,9 @@ class Game {
 		for (const entity of this.entities) {
 			entity.update(dt)
 		}
-		this.world.stepSimulation(dt , 10);
+		if (this.started) {
+			this.world.stepSimulation(dt , 10);
+		}
 
 		var ms = this.vehicle.body.getMotionState();
 		ms.getWorldTransform(this.vehicle.TRANSFORM_AUX);
@@ -615,15 +629,17 @@ class Game {
 
 		// spotLight.target = truck
 
-		if (this.actions.acceleration || this.actions.braking) {
-			const forceAbs = 15000
-			const force = this.actions.acceleration ? forceAbs : -forceAbs
-			this.vehicle.move(force)
-		}
-		if (this.actions.left || this.actions.right) {
-			this.vehicle.steer(this.actions.left ? -0.01 : 0.01)
-		} else {
-			this.vehicle.releaseSteer()
+		if (this.started) {
+			if (this.actions.acceleration || this.actions.braking) {
+				const forceAbs = 15000
+				const force = this.actions.acceleration ? forceAbs : -forceAbs
+				this.vehicle.move(force)
+			}
+			if (this.actions.left || this.actions.right) {
+				this.vehicle.steer(this.actions.left ? -0.01 : 0.01)
+			} else {
+				this.vehicle.releaseSteer()
+			}
 		}
 
 		this.draw()
