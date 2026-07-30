@@ -51,7 +51,14 @@ function show(name: SlotName, container: HTMLElement | null) {
 	ins.style.display = 'block'
 	ins.setAttribute('data-ad-client', CLIENT)
 	ins.setAttribute('data-ad-slot', slot)
-	ins.setAttribute('data-ad-format', 'auto')
+	// « rectangle » plutôt que « auto » : les deux écrans sont dimensionnés pour tenir
+	// sans défilement, et en « auto » Google peut servir un grand format vertical
+	// (300x600) qui ferait déborder la colonne. Restreindre les formats demandés est la
+	// seule façon correcte de plafonner la hauteur : rogner l'encart en CSS
+	// (max-height, overflow) reviendrait à masquer une partie de l'annonce, ce que les
+	// règles du programme interdisent. Les formats rectangulaires sont de toute façon
+	// les mieux valorisés.
+	ins.setAttribute('data-ad-format', 'rectangle')
 	ins.setAttribute('data-full-width-responsive', 'true')
 	container.appendChild(ins)
 
