@@ -12,11 +12,16 @@
 
 const CLIENT = 'ca-pub-1293426764542886'
 
+// Un même bloc d'annonce peut servir à plusieurs emplacements d'une même page.
+// Créer un second bloc dans AdSense permettrait de séparer les statistiques des
+// deux écrans, sans rien changer d'autre que la valeur ci-dessous.
+const UNIT_MONSTER_TRUCK = '5660023345'
+
 const SLOTS = {
 	/** Encart de l'écran d'accueil, sous le bouton « Jouer ». */
-	home: '',
+	home: UNIT_MONSTER_TRUCK,
 	/** Encart de l'écran de pause (Échap). */
-	pause: '',
+	pause: UNIT_MONSTER_TRUCK,
 }
 
 type SlotName = keyof typeof SLOTS
@@ -59,12 +64,40 @@ function show(name: SlotName, container: HTMLElement | null) {
 	}
 
 	// AdSense pose data-ad-status="filled" / "unfilled" une fois la réponse reçue.
-	// Sans réponse (script bloqué) l'attribut reste absent : on replie.
+	// On surveille l'attribut plutôt que d'attendre un délai fixe : sur un réseau lent
+	// une annonce peut mettre plusieurs secondes à arriver, et la replier entre-temps
+	// ferait perdre l'impression.
+	const collapse = () => { container.style.display = 'none' }
+
+	// Un bloqueur de publicité peut masquer l'encart en CSS depuis une feuille de style
+	// utilisateur, invisible au JavaScript de la page, tout en laissant AdSense le
+	// déclarer rempli. On replie alors le conteneur pour ne pas laisser la mention
+	// « Publicité » au-dessus du vide.
+	const collapseIfHidden = () => window.setTimeout(() => {
+		if (ins.offsetHeight === 0) collapse()
+	}, 2000)
+
+	let settled = false
+	const observer = new MutationObserver(() => {
+		const status = ins.getAttribute('data-ad-status')
+		// AdSense passe par « loading » avant de conclure. Ne traiter que les états
+		// terminaux : replier dès « loading » masquait l'encart juste avant l'arrivée
+		// de l'annonce, et l'observateur se déconnectait sans jamais voir « filled ».
+		if (status !== 'filled' && status !== 'unfilled') return
+		settled = true
+		observer.disconnect()
+		if (status === 'filled') collapseIfHidden()
+		else collapse()
+	})
+	observer.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] })
+
+	// Filet de sécurité : sans aucune réponse (script bloqué par un bloqueur de
+	// publicité, réseau coupé) l'attribut n'atteint jamais d'état terminal.
 	window.setTimeout(() => {
-		if (ins.getAttribute('data-ad-status') !== 'filled') {
-			container.style.display = 'none'
-		}
-	}, 3000)
+		if (settled) return
+		observer.disconnect()
+		if (ins.getAttribute('data-ad-status') !== 'filled') collapse()
+	}, 12000)
 }
 
 export { show, SLOTS }
