@@ -1,0 +1,54 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# Jamais deux déploiements en parallèle, et on ne coupe pas celui qui tourne
+concurrency:
+  group: deploy-monster-truck
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Le build doit passer AVANT qu'on touche au site en ligne
+      - name: Build
+        run: npm run build
+
+      # La clé n'ouvre qu'une commande forcée sur le VPS : rsync dans ~/sites/<app>
+      # ou « deploy <app> ». Ni shell, ni accès au reste de la machine.
+      - name: Clé de déploiement
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H ${{ vars.DEPLOY_HOST || '137.74.162.39' }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Envoi vers le VPS
+        run: |
+          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes" \
+            ./dist/ pierre@137.74.162.39:sites/monster-truck/
+
+      - name: Mise en service
+        run: ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes pierre@137.74.162.39 deploy monster-truck
+
+      - name: Vérifier que le site répond
+        run: |
+          set -euo pipefail
+          sleep 2
+          code=$(curl -sS -o /dev/null -w '%{http_code}' https://monster-truck.pilow.fr/)
+          echo "monster-truck.pilow.fr -> $code"
+          test "$code" = "200"
