@@ -1,0 +1,11 @@
+One monster truck, a hilly terrain, and no objective whatsoever. That's it, and that's the whole point.
+
+Monster Truck is a 3D sandbox: climb the hills, launch off the bumps, flip in mid-air, and go smash the stack of crates. There's no score, no timer, no level to unlock — just a big four-wheel-drive truck and a landscape to tear up however you like.
+
+• Realistic physics: suspension, grip, rollovers and jumps all behave the way they should.
+• Smooth 3D rendering, rolling terrain dotted with trees.
+• Simple touch controls: accelerate, brake, steer, jump.
+• Customize the truck's paint and settings.
+• Works 100% offline, no sign-up.
+
+Hop in, floor it, do whatever. It's a toy, not a challenge.

@@ -32,7 +32,10 @@ class Model {
 			child.castShadow = true
 			child.receiveShadow = true
 		}
-		Model.CRATE.scale.set(0.25, 0.25, 0.25)
+		// La caisse (Kenney/Quaternius, CC0) est déjà exportée à la bonne taille
+		// (cube de 1,2, centré sur l'origine), qui correspond au « size » du pavé
+		// physique dans addBoxes() — aucune mise à l'échelle nécessaire.
+		Model.CRATE.scale.set(1, 1, 1)
 
 		Model.TRUCK = truck.scene
 		Model.WHEEL = wheel.scene

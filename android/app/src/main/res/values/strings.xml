@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Monster Truck</string>
+    <string name="title_activity_main">Monster Truck</string>
+    <string name="package_name">fr.pilow.monstertruck</string>
+    <string name="custom_url_scheme">fr.pilow.monstertruck</string>
+    <!-- App ID AdMob réel de l'app « Monster Truck » (console AdMob). L'unité
+         bannière correspondante est dans src/ads-native.ts (BANNER_UNIT). -->
+    <string name="admob_app_id">ca-app-pub-1293426764542886~9691887259</string>
+</resources>

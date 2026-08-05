@@ -140,13 +140,9 @@ function createObjects(ammo: typeof Ammo) {
 	Model.GROUND.castShadow = true
 	game.scene.add(Model.GROUND)
 
-	// Trees
+	// Trees. Les conifères sont ceux du Kenney Nature Kit (CC0) : ils gardent leur
+	// propre palette low-poly, on se contente d'activer les ombres.
 	const setShadow = (model: any) => model.traverse((o: any) => {
-		if (o.name === 'BlueSpruce_Med_1') o.material = new THREE.MeshPhongMaterial({ color: 0x1f7600 })
-		if (o.name === 'BlueSpruce_Med_2') o.material = new THREE.MeshPhongMaterial({ color: 0x279300 })
-		if (o.name === 'BlueSpruce_Med_3') o.material = new THREE.MeshPhongMaterial({ color: 0x2eaf00 })
-		if (o.name === 'BlueSpruce_Med_4') o.material = new THREE.MeshPhongMaterial({ color: 0x114000 })
-		if (o.name === 'BlueSpruce_Med_5') o.material = new THREE.MeshPhongMaterial({ color: 0x210b00 })
 		if (o.isMesh) {
 			o.castShadow = true
 			o.receiveShadow = true
@@ -172,8 +168,9 @@ function createObjects(ammo: typeof Ammo) {
 		const model = models[Math.random() * models.length | 0].clone()
 		model.position.set(x, y, z)
 
-		// const scale = 50 + Math.random() * 100
-		const scale = 3 + Math.random() * 6
+		// Les pins Kenney sont petits nativement (~1,5 u) : on agrandit davantage que
+		// les anciens arbres pour retrouver une taille crédible sur le terrain.
+		const scale = 11 + Math.random() * 22
 		model.scale.set(scale, scale, scale)
 		model.rotateY(Math.random() * Math.PI * 2)
 		game.scene.add(model)

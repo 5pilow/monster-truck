@@ -1,0 +1,11 @@
+Un monster truck, un terrain vallonné, et aucun objectif. C'est tout, et c'est justement le but.
+
+Monster Truck est un bac à sable 3D : grimpez les collines, décollez sur les bosses, retournez-vous dans les airs, et allez exploser la pile de caisses. Il n'y a pas de score, pas de chrono, pas de niveau à débloquer — juste un gros camion à quatre roues motrices et un terrain à malmener comme vous voulez.
+
+• Physique réaliste : suspensions, adhérence, tonneaux et sauts se comportent comme il faut.
+• Rendu 3D fluide, terrain vallonné parsemé d'arbres.
+• Commandes tactiles simples : accélérer, freiner, braquer, sauter.
+• Personnalisez la peinture et les réglages du camion.
+• Fonctionne 100 % hors-ligne, aucune inscription.
+
+Montez, foncez, faites n'importe quoi. C'est un jouet, pas une épreuve.

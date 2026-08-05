@@ -13,6 +13,12 @@
     "vite": "^7.3.6"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^7.2.0",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^7.6.8",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/status-bar": "^8.0.3",
     "@types/three": "^0.159.0",
     "ammo.js": "github:kripken/ammo.js",
     "ammojs-typed": "^1.0.6",

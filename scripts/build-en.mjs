@@ -76,7 +76,10 @@ const STRINGS = [
 		'<a href="https://pybullet.org/" target="_blank" rel="noopener">Bullet</a> physics through Ammo.js in WebAssembly: the terrain is a collision mesh, wheels and suspension are hand-built on spring constraints;',
 	],
 	['ombres douces, reflets par sonde cubique, halo de lentille ;', 'soft shadows, cube-probe reflections, lens flare;'],
-	['modèles réalisés sous Blender.', 'models made in Blender.'],
+	[
+		'modèles 3D <a href="https://github.com/5pilow/monster-truck/blob/master/CREDITS.md" target="_blank" rel="noopener">CC0</a> : camion &amp; caisse <a href="https://quaternius.com/" target="_blank" rel="noopener">Quaternius</a>, arbres <a href="https://kenney.nl/" target="_blank" rel="noopener">Kenney</a>, ciel <a href="https://polyhaven.com/" target="_blank" rel="noopener">Poly Haven</a>.',
+		'<a href="https://github.com/5pilow/monster-truck/blob/master/CREDITS.md" target="_blank" rel="noopener">CC0</a> 3D models: truck &amp; crate by <a href="https://quaternius.com/" target="_blank" rel="noopener">Quaternius</a>, trees by <a href="https://kenney.nl/" target="_blank" rel="noopener">Kenney</a>, sky by <a href="https://polyhaven.com/" target="_blank" rel="noopener">Poly Haven</a>.',
+	],
 
 	// Pieds de page et écran de pause
 	['<span>Un jeu de <a href="https://pilow.fr" target="_blank" rel="noopener">Pilow</a></span>', '<span>A game by <a href="https://pilow.fr" target="_blank" rel="noopener">Pilow</a></span>'],

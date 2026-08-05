@@ -93,7 +93,7 @@
 			position: fixed; inset: 0;
 			display: none;
 			align-items: flex-start; justify-content: center;
-			padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+			padding: max(24px, env(safe-area-inset-top)) 16px calc(max(24px, env(safe-area-inset-bottom)) + var(--ad-banner-height, 0px));
 			overflow-y: auto;
 			background: radial-gradient(circle at 50% 30%, rgba(10, 16, 24, .72), rgba(6, 10, 16, .93));
 			z-index: 20;
@@ -387,7 +387,7 @@
 					<li>rendu 3D <a href="https://threejs.org/" target="_blank" rel="noopener">Three.js</a> et WebGL ;</li>
 					<li>physique <a href="https://pybullet.org/" target="_blank" rel="noopener">Bullet</a> via Ammo.js en WebAssembly : terrain en maillage de collision, roues et suspensions montées à la main sur des liaisons ressort ;</li>
 					<li>ombres douces, reflets par sonde cubique, halo de lentille ;</li>
-					<li>modèles réalisés sous Blender.</li>
+					<li>modèles 3D <a href="https://github.com/5pilow/monster-truck/blob/master/CREDITS.md" target="_blank" rel="noopener">CC0</a> : camion &amp; caisse <a href="https://quaternius.com/" target="_blank" rel="noopener">Quaternius</a>, arbres <a href="https://kenney.nl/" target="_blank" rel="noopener">Kenney</a>, ciel <a href="https://polyhaven.com/" target="_blank" rel="noopener">Poly Haven</a>.</li>
 				</ul>
 			</div>
 

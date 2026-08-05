@@ -8,7 +8,12 @@
 //    (modèles, ciel, images) sortent du cache d'abord.
 // Les scripts tiers (publicité, mesure d'audience) ne sont jamais interceptés.
 
-const CACHE = 'monster-truck-v1'
+// ⚠️ Incrémenter cette version à CHAQUE fois qu'une ressource au nom stable
+// (modèles /model/*.glb, sky.jpg, monster-truck.png, sun/lens.png…) change de
+// contenu : le cache est « cache d'abord », donc sans changement de version les
+// anciens fichiers resteraient servis indéfiniment. L'activation purge les
+// caches dont le nom diffère, forçant un re-téléchargement.
+const CACHE = 'monster-truck-v6'
 
 self.addEventListener('install', event => {
 	event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['/'])).then(() => self.skipWaiting()))

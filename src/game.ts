@@ -8,6 +8,8 @@ import { Lensflare, LensflareElement } from "./lensflare";
 import { Box } from "./box";
 import { show as showAd } from "./ads";
 import { setupConsent } from "./consent";
+import { isNative } from "./native";
+import { showBanner, hideBanner } from "./ads-native";
 
 /** Nombre d'images entre deux rafraîchissements de la sonde de reflet. */
 const CUBE_CAMERA_INTERVAL = 3
@@ -230,6 +232,10 @@ class Game {
 		  this.scene.add(this.cubeCamera1)
 		//   scene.add(Ball1)
 
+		// Repeinture au démarrage avec la couleur par défaut (rouge métallisé, cf.
+		// currentColor/currentMetallic) : la carrosserie « Body » est peinte comme si
+		// on cliquait sur la pastille rouge. Seules ces faces changent — vitres,
+		// chromes et phares gardent leur teinte.
 		this.setPaint()
 
 		var materialWheel = new THREE.MeshPhongMaterial({
@@ -280,10 +286,20 @@ class Game {
 		// La scène tourne derrière l'écran d'accueil : le joueur voit le camion avant
 		// même d'avoir cliqué, ce qui donne tout de suite envie de jouer.
 		this.homeScreen.style.display = 'flex'
-		showAd('home', document.getElementById('ad-home'))
-		// Lien « Cookies » dans les pieds de page + masquage du widget flottant de
-		// Google, l'un conditionnant l'autre (cf. consent.ts).
-		setupConsent()
+		if (isNative) {
+			// Coquille Android : pub AdMob native, jamais l'AdSense du web ni le CMP
+			// Funding Choices (rien à consentir sans AdSense). Les conteneurs d'encart
+			// web sont masqués, sinon leur label « Publicité » reste affiché au-dessus
+			// du vide (la bannière AdMob, elle, flotte en bas de l'écran).
+			document.getElementById('ad-home')?.style.setProperty('display', 'none')
+			document.getElementById('ad-pause')?.style.setProperty('display', 'none')
+			showBanner()
+		} else {
+			showAd('home', document.getElementById('ad-home'))
+			// Lien « Cookies » dans les pieds de page + masquage du widget flottant de
+			// Google, l'un conditionnant l'autre (cf. consent.ts).
+			setupConsent()
+		}
 	}
 
 	public addBoxes() {
@@ -539,6 +555,8 @@ class Game {
 		this.homeScreen.style.display = 'none'
 		this.pauseScreen.style.display = 'none'
 		this.hud.style.display = 'block'
+		// Aucune bannière pendant une partie : elle ne revient qu'en pause/accueil.
+		hideBanner()
 		this.started = true
 		// Reprendre depuis l'accueil ne doit pas laisser la simulation figée.
 		if (this.paused) {
@@ -562,6 +580,7 @@ class Game {
 			this.update()
 		}
 		this.homeScreen.style.display = 'flex'
+		showBanner()
 	}
 
 	/** Affiche ou masque l'écran de pause, en suspendant la simulation. */
@@ -569,8 +588,10 @@ class Game {
 		this.paused = !this.paused
 		this.pauseScreen.style.display = this.paused ? 'flex' : 'none'
 		if (this.paused) {
-			showAd('pause', document.getElementById('ad-pause'))
+			if (isNative) showBanner()
+			else showAd('pause', document.getElementById('ad-pause'))
 		} else {
+			hideBanner()
 			// La boucle a été interrompue pendant la pause : sans cette remise à zéro,
 			// getDelta() renverrait toute la durée de la pause d'un coup.
 			this.clock.getDelta()
@@ -678,11 +699,14 @@ class Game {
 		// programmes GPU jamais libérés.
 		if (!this.paintMaterial) {
 			this.paintMaterial = new THREE.MeshPhongMaterial()
+			// Seules les faces de carrosserie (matériau « Body », isolées du reste de
+			// l'atlas lors de la préparation du modèle) sont repeintes : vitres, chromes,
+			// châssis, phares et feux gardent leur teinte d'origine.
 			Model.TRUCK.traverse((o: any) => {
-				if (o.isMesh) {
-					if( o.name === "BodyC10003" || o.name === "BodyC10007" || o.name === "BodyC10010") {
-						o.material = this.paintMaterial
-					}
+				if (!o.isMesh) return
+				const mats = Array.isArray(o.material) ? o.material : [o.material]
+				if (mats.some((m: any) => m && m.name === "Body")) {
+					o.material = this.paintMaterial
 				}
 			});
 		}
