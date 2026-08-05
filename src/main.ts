@@ -1,3 +1,12 @@
+// Remontée des erreurs navigateur vers errors.pilow.fr (fire-and-forget, sans dépendance).
+try {
+  const _report = (m: string, k?: string) => {
+    try { navigator.sendBeacon('https://errors.pilow.fr/api/errors', JSON.stringify({ site: location.hostname, message: m, stack: k, url: location.pathname })) } catch { /* ignore */ }
+  }
+  addEventListener('error', (e) => _report(e.message, (e as ErrorEvent).error?.stack))
+  addEventListener('unhandledrejection', (e) => { const r = (e as PromiseRejectionEvent).reason; _report('unhandledrejection: ' + (r?.message ?? r), r?.stack) })
+} catch { /* ignore */ }
+
 import './style.css'
 import * as THREE from 'three'
 import Ammo from 'ammojs-typed'
