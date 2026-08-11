@@ -337,6 +337,44 @@
 			#settings.open { display: block; }
 			#colors div { width: 34px; height: 34px; margin: 4px; }
 		}
+
+		/* ---------- Contact ---------- */
+
+		#contact-dialog {
+			background: var(--panel); color: #e8edf4;
+			border: 1px solid rgba(255, 255, 255, .12); border-radius: 18px;
+			padding: 24px 26px; width: min(92vw, 440px);
+			font-weight: normal; text-align: left;
+			box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+		}
+		#contact-dialog::backdrop { background: rgba(6, 10, 16, .65); backdrop-filter: blur(3px); }
+		#contact-dialog h2 { margin: 0 0 4px; font-size: 15px; text-transform: uppercase; letter-spacing: 1.2px; color: #8fa3bb; }
+		#contact-dialog .contact-hint { margin: 0 0 14px; font-size: 13px; color: #9fb0c4; }
+		#contact-form { display: flex; flex-direction: column; gap: 12px; }
+		#contact-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #9fb0c4; }
+		#contact-form textarea, #contact-form input[type='email'] {
+			font: inherit; font-size: 14px; font-weight: normal; color: #e8edf4;
+			background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .2);
+			border-radius: 10px; padding: 9px 11px; resize: vertical;
+			/* Le body coupe la sélection ; les champs doivent rester éditables. */
+			-webkit-user-select: text; user-select: text;
+		}
+		#contact-form textarea:focus, #contact-form input[type='email']:focus { outline: none; border-color: var(--accent); }
+		/* Le pot de miel sort du champ de vision, sans display:none trop repérable. */
+		#contact-website { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+		#contact-status { min-height: 16px; margin: 0; font-size: 13px; text-align: center; color: #9fb0c4; }
+		#contact-status.ok { color: #7ddf8a; }
+		#contact-status.ko { color: #ff8b7a; }
+		#contact-actions { display: flex; gap: 10px; justify-content: flex-end; }
+		#contact-actions button {
+			font: inherit; font-size: 14px; font-weight: bold; padding: 9px 16px;
+			border-radius: 10px; border: 1px solid rgba(255, 255, 255, .25);
+			background: transparent; color: #cfd8e4; cursor: pointer;
+		}
+		#contact-actions button:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+		#contact-actions button[type='submit'] { background: var(--accent); border-color: transparent; color: #fff; }
+		#contact-actions button[type='submit']:hover { background: #ff6f3c; }
+		#contact-actions button:disabled { opacity: .6; cursor: default; }
 	</style>
 </head>
 
@@ -396,6 +434,7 @@
 				<a href="https://github.com/5pilow" target="_blank" rel="noopener">GitHub</a>
 				<a href="https://leekwars.com" target="_blank" rel="noopener">Leek Wars</a>
 				<a href="/privacy.html">Confidentialité</a>
+				<a href="#contact" id="contact-link">Contact</a>
 				<a href="/en/" hreflang="en">English</a>
 			</div>
 		</div>
@@ -458,7 +497,77 @@
 		</div>
 	</div>
 
+	<!-- Contact : en dur dans la page pour figurer tel quel dans le HTML servi.
+	     Poste sur la boîte à messages publique de Jarvis, protégée côté serveur
+	     par une limite de débit et le pot de miel ci-dessous. -->
+	<dialog id="contact-dialog">
+		<h2>Contact</h2>
+		<p class="contact-hint">Un bug, une idée ? Écris-moi.</p>
+		<form id="contact-form">
+			<label>Message
+				<textarea name="message" rows="5" maxlength="4000" required></textarea>
+			</label>
+			<label>Ton email, si tu veux une réponse
+				<input name="contact" type="email" maxlength="200" autocomplete="email">
+			</label>
+			<!-- Pot de miel : invisible pour un humain, rempli par les robots. -->
+			<input id="contact-website" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
+			<p id="contact-status" role="status"></p>
+			<div id="contact-actions">
+				<button type="button" id="contact-close">Fermer</button>
+				<button type="submit" id="contact-send">Envoyer</button>
+			</div>
+		</form>
+	</dialog>
+
 	<script type="module" src="/src/main.ts"></script>
+	<script>
+		// Formulaire de contact. Script volontairement hors module : Vite le laisse
+		// tel quel dans le HTML, et scripts/build-en.mjs peut donc traduire ses
+		// chaînes pour la page anglaise.
+		(function () {
+			var dialog = document.getElementById('contact-dialog')
+			var form = document.getElementById('contact-form')
+			var status = document.getElementById('contact-status')
+			var send = document.getElementById('contact-send')
+			function setStatus(text, kind) {
+				status.textContent = text
+				status.className = kind || ''
+			}
+			document.getElementById('contact-link').addEventListener('click', function (e) {
+				e.preventDefault()
+				setStatus('', '')
+				dialog.showModal()
+			})
+			document.getElementById('contact-close').addEventListener('click', function () {
+				dialog.close()
+			})
+			form.addEventListener('submit', async function (e) {
+				e.preventDefault()
+				send.disabled = true
+				setStatus('Envoi…', '')
+				try {
+					var res = await fetch('https://jarvis.pilow.fr/api/inbox/monster-truck', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							message: form.message.value.trim(),
+							contact: form.contact.value.trim(),
+							subject: 'Monster Truck',
+							website: form.website.value,
+						}),
+					})
+					if (!res.ok) throw new Error(String(res.status))
+					setStatus('Message envoyé, merci !', 'ok')
+					form.reset()
+				} catch (err) {
+					setStatus("Échec de l'envoi, réessaie plus tard.", 'ko')
+				} finally {
+					send.disabled = false
+				}
+			})
+		})()
+	</script>
 	<script>
 		// Le jeu pèse plusieurs Mo : une fois en cache il se relance aussitôt, et
 		// s'installe comme une application. Voir public/sw.js.

@@ -90,6 +90,17 @@ const STRINGS = [
 	[">Retour à l'accueil<", '>Back to the menu<'],
 	['<span><kbd>Échap</kbd> pour reprendre</span>', '<span><kbd>Esc</kbd> to resume</span>'],
 
+	// Formulaire de contact (balisage + chaînes du script inline)
+	['Un bug, une idée ? Écris-moi.', 'A bug, an idea? Drop me a line.'],
+	['Ton email, si tu veux une réponse', 'Your email, if you want a reply'],
+	['>Fermer<', '>Close<'],
+	['>Envoyer<', '>Send<'],
+	["setStatus('Envoi…', '')", "setStatus('Sending…', '')"],
+	["setStatus('Message envoyé, merci !', 'ok')", "setStatus('Message sent, thank you!', 'ok')"],
+	['setStatus("Échec de l\'envoi, réessaie plus tard.", \'ko\')', "setStatus(\"Sending failed, please try again later.\", 'ko')"],
+	// Le sujet distingue la page d'origine dans la boîte de réception.
+	["subject: 'Monster Truck',", "subject: 'Monster Truck (en)',"],
+
 	// Interface du jeu
 	['title="Retour à l\'accueil" aria-label="Retour à l\'accueil"', 'title="Back to the menu" aria-label="Back to the menu"'],
 	['title="Réglages" aria-label="Réglages"', 'title="Settings" aria-label="Settings"'],
