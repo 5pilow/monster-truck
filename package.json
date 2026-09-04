@@ -23,5 +23,9 @@
     "ammo.js": "github:kripken/ammo.js",
     "ammojs-typed": "^1.0.6",
     "three": "^0.159.0"
+  },
+  "overrides": {
+    "fflate": "^0.6.11",
+    "@xmldom/xmldom": "^0.9.12"
   }
 }
